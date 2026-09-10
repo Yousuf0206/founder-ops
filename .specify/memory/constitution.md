@@ -1,55 +1,97 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+# Founder Ops Constitution
+
+**Status: BINDING for all implementation.**
+
+Product: Multi-workspace internal OS for marketing, content, sales intake, and R&D.
+First tenant: Lumo Learn.
+
+## Core Vision
+
+Founder Ops helps small teams draft growth work from a single source of product truth —
+research, content, campaigns, and inbound leads — with human approval before anything
+goes public. It must work for Lumo Learn first and for additional apps via workspaces
+without forking the codebase.
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Draft, Never Auto-Publish (NON-NEGOTIABLE)
+Bots prepare; humans approve. No code path may push content, messages, or changes to a
+public or external surface without an explicit human approval action. Any task that
+implies auto-publishing must be refused.
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+### II. One Knowledge Base Per Workspace
+A workspace's knowledge base is the only source of product claims for that workspace.
+No hardcoded product facts, no per-feature claim stores, no cross-workspace borrowing.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### III. Claims Bind Every Prompt
+Approved claims and forbidden claims from the workspace knowledge base are injected into
+every AI prompt for that workspace. Forbidden-claim enforcement is a prompt-construction
+requirement, not a post-hoc filter.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### IV. No Cold Outreach or Bulk Messaging (v1)
+Inbound only. No cold email, no bulk sends, no sequenced campaigns to non-consenting
+recipients in v1.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### V. Team-Only, Never Student-Facing
+This is an internal operations tool. No student accounts, no student-facing surfaces, no
+mixing into student UX. Access is team-only and enforced by Supabase RLS.
 
-### [PRINCIPLE_6_NAME]
+### VI. Multi-Workspace From Day One
+Every table, query, policy, and AI run carries `workspace_id` from the first migration,
+even while the UI shows a single workspace. Additional apps onboard as workspaces, never
+as forks.
 
+### VII. Everything Audited
+Every AI run and every approval is written to an audit log with actor, workspace, inputs
+reference, and outcome.
 
-[PRINCIPLE__DESCRIPTION]
+### VIII. Cost Caps Are Mandatory
+Each workspace has enforced daily AI run limits. A missing or unenforced cap is a bug,
+not a backlog item.
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+### IX. Secrets Never Reach the Browser
+API keys, service-role credentials, and provider tokens stay server-side. LLM calls are
+made from server code only.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+### X. Simple, Complete, Runnable
+Prefer simple, complete, runnable work over partial agent theatre. Ship a working slice
+rather than scaffolding for an unbuilt one.
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+## Product Boundaries
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+**In scope (v1):** Knowledge base, R&D reports, content drafts, approvals, inbound leads,
+campaign drafts, audit logs, workspace isolation.
+
+**Out of scope (v1):** Auto social publish, video rendering, full CRM, n8n requirement,
+autonomous multi-agent loops, public third-party API, student accounts.
+
+## Safety Levels
+
+| Level | Handling | Examples |
+|---|---|---|
+| Low risk | Automatic | Summaries, internal reports, draft generation, lead classification |
+| Medium risk | One-click human action | Optional single follow-up email send (off by default) |
+| High risk | Human only / blocked in v1 | Public publish automation, bulk send, pricing changes, refunds, deleting another workspace's data |
+
+## Stack Defaults (v1)
+
+- **App:** Next.js (App Router) + TypeScript strict + Tailwind
+- **DB/Auth:** Supabase (Auth + Postgres + RLS)
+- **AI:** Direct server-side LLM calls (no Dify required for MVP)
+- **Hosting:** Vercel
+- **Notify:** Email first
+- **First deploy:** Separate app or separate route group; not mixed into student UX
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+This constitution supersedes all other practices. Amendments require an explicit version
+bump and a dated entry below.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Self-audit — run on every task before reporting completion:**
+1. Does this respect draft-only external actions?
+2. Is all data scoped by `workspace_id`?
+3. Are forbidden claims enforced in the prompts this task touches?
+4. Is this team-only with RLS?
+5. Is anything auto-publishing? If yes → refuse.
+
+**Version**: 1.0.0 | **Ratified**: 2026-09-11 | **Last Amended**: 2026-09-11

@@ -1,0 +1,42 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# next
+.next/
+out/
+build/
+dist/
+next-env.d.ts
+
+# test / coverage
+coverage/
+
+# env — never commit secrets (Constitution IX)
+.env
+.env.*
+!.env.example
+
+# supabase local
+supabase/.branches/
+supabase/.temp/
+
+# logs
+*.log
+npm-debug.log*
+
+# editors / os
+.DS_Store
+Thumbs.db
+*.swp
+*.tmp
+.vscode/
+.idea/
+
+# typescript
+*.tsbuildinfo
+
+# local agent/tool state — machine-specific, not source
+.claude-flow/
+.swarm/
