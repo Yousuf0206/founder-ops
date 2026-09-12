@@ -1,0 +1,74 @@
+import Link from "next/link";
+
+import { canWrite } from "@/lib/auth/session";
+import { getClaimSet, requireSession } from "@/lib/knowledge/repo";
+import { listDrafts } from "@/lib/approvals/repo";
+import { capStatus } from "@/lib/ai/run";
+import { isProviderConfigured } from "@/lib/ai/provider";
+import { ContentForm } from "./content-form";
+import { StatusPill } from "../status-pill";
+
+export default async function ContentPage() {
+  const session = await requireSession();
+  const workspaceId = session.activeWorkspace.workspaceId;
+
+  const [claimSet, cap, drafts] = await Promise.all([
+    getClaimSet(workspaceId),
+    capStatus(workspaceId),
+    listDrafts(workspaceId),
+  ]);
+
+  const writer = canWrite(session.activeWorkspace.role);
+
+  let disabled: string | undefined;
+  if (!writer) disabled = "You have viewer access, so you cannot draft content.";
+  else if (!claimSet)
+    disabled =
+      "This workspace has no claim set. Generation is refused until approved and forbidden claims are defined under Knowledge.";
+  else if (!isProviderConfigured())
+    disabled = "No AI provider is configured on the server.";
+  else if (cap.used >= cap.cap)
+    disabled = `Daily AI run cap reached (${cap.used} of ${cap.cap}). Runs resume at UTC midnight.`;
+
+  return (
+    <div>
+      <div className="flex items-start justify-between gap-6">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight">Content</h1>
+          <p className="mt-1 text-sm text-[--color-muted]">
+            Draft content from the workspace claim set. Every draft waits for a human.
+          </p>
+        </div>
+        <p className="shrink-0 text-xs text-[--color-muted]">
+          {cap.used} / {cap.cap} runs today
+        </p>
+      </div>
+
+      <ContentForm disabled={disabled} />
+
+      <h2 className="mt-10 text-sm font-medium">Drafts</h2>
+      {drafts.length === 0 ? (
+        <p className="mt-3 rounded-lg border border-dashed border-[--color-line] p-6 text-sm text-[--color-muted]">
+          No drafts yet.
+        </p>
+      ) : (
+        <ul className="mt-3 divide-y divide-[--color-line] rounded-lg border border-[--color-line] bg-[--color-surface]">
+          {drafts.map((draft) => (
+            <li key={draft.id}>
+              <Link
+                href={`/content/${draft.id}`}
+                className="flex items-baseline justify-between gap-4 px-4 py-3 hover:bg-[--color-ground]"
+              >
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-medium">{draft.topic}</span>
+                  <span className="text-xs text-[--color-muted]">{draft.platform}</span>
+                </span>
+                <StatusPill status={draft.status} />
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}

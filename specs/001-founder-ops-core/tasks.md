@@ -65,16 +65,27 @@ To close it:
 ## Phase 1 — Knowledge
 
 **Goal**: The workspace's product truth is editable and stored, scoped to the workspace.
+**Status**: code complete; unit tests pass, RLS tests still unexecuted.
 
-- [ ] **T1.1** [US1] Migration: `knowledge_docs`, `claim_sets` + their RLS policies (same file)
-- [ ] **T1.2** [US1] API CRUD `knowledge_docs` under `app/api/ops/knowledge/`
-- [ ] **T1.3** [P] [US1] UI: list / create / edit docs — `app/(ops)/knowledge/`
-- [ ] **T1.4** [P] [US1] UI: approved claims + forbidden claims + brand voice editor
-- [ ] **T1.5** [US1] Seed Lumo starter claims (no rank guarantees, etc.) — `supabase/seed/`
-- [ ] **T1.6** ➕ [US1] Zod schemas at the knowledge API boundary (validate before write)
-- [ ] **T1.7** ➕ [US1] Role gate: viewers read, editors and owners write (extends T0.4 policies)
+- [X] **T1.1** [US1] Migration: `knowledge_docs`, `claim_sets` + their RLS policies — `supabase/migrations/0002_knowledge.sql`
+- [X] **T1.2** [US1] API CRUD — `app/api/ops/knowledge/{route,[id]/route,claims/route}.ts`
+- [X] **T1.3** [P] [US1] UI: list / create / edit docs — `app/(ops)/knowledge/`
+- [X] **T1.4** [P] [US1] UI: approved claims + forbidden claims + brand voice editor — `app/(ops)/knowledge/claims/`
+- [X] **T1.5** [US1] Seed starter claims — `supabase/seed/seed-claims.ts`; **forbidden list and brand voice only, approved claims deliberately empty** (see below)
+- [X] **T1.6** ➕ [US1] Zod schemas at the boundary — `lib/validation/knowledge.ts`, 15 unit tests **passing**
+- [X] **T1.7** ➕ [US1] Role gate: viewers read, editors and owners write — `can_write()` in policies + `requireWriter()` in routes/actions
 
 **DoD:** Claims editable and stored per workspace; viewer cannot write.
+**DoD status:** the viewer-cannot-write half is written as 13 RLS tests but still unrun.
+
+### Why approved claims are seeded empty
+
+Approved claims are statements of fact about Lumo Learn. Seeding invented ones would put
+fabricated product facts into the exact store the constitution designates as the single
+source of truth (principle II), which every later prompt then treats as verified. The
+forbidden list ships seeded because prohibitions are safe to over-apply; the approved list
+must be written by someone who knows the product. Until it is filled, generation has a
+claim set but nothing positive to assert — the correct failure mode.
 
 ---
 
@@ -82,19 +93,20 @@ To close it:
 
 **Goal**: A real research report is saved under Lumo, with labelled findings, logged and capped.
 
-- [ ] **T2.1** [US2] Migration: `research_reports`, `ai_run_logs`, `audit_logs` + RLS policies
-- [ ] **T2.2** [US2] `lib/ai/` provider client (env-selected) + run cap check
-- [ ] **T2.3** [US2] `lib/prompts/assemble.ts` — inject brand voice, approved claims, forbidden claims, and the "if unknown, say unknown" instruction; **claim set is a required argument, throw if absent**
-- [ ] **T2.4** [US2] `POST /api/ops/research/run`
-- [ ] **T2.5** [P] [US2] Research UI: input → result with Fact / Inference / Hypothesis
-- [ ] **T2.6** [US2] Persist report + log tokens/run into `ai_run_logs`
-- [ ] **T2.7** ➕ [SYS] Cap configuration storage per FR-Q-002 resolution — cap must read from data, not a constant
-- [ ] **T2.8** ➕ [SYS] Cap enforcement is transactional — check and increment in one transaction so concurrent runs cannot both pass at the boundary
-- [ ] **T2.9** ➕ [US2] Unit test: prompt assembly throws when the claim set is missing
-- [ ] **T2.10** ➕ [US2] Integration test: run at the cap boundary is refused and makes no provider call
-- [ ] **T2.11** ➕ [US2] Failure path: provider timeout / error / unparseable output logs a failed run and saves no partial report
+- [X] **T2.1** [US2] Migration: `research_reports`, `ai_run_logs`, `audit_logs` + RLS policies
+- [X] **T2.2** [US2] `lib/ai/` provider client (env-selected) + run cap check
+- [X] **T2.3** [US2] `lib/prompts/assemble.ts` — inject brand voice, approved claims, forbidden claims, and the "if unknown, say unknown" instruction; **claim set is a required argument, throw if absent**
+- [X] **T2.4** [US2] `POST /api/ops/research/run`
+- [X] **T2.5** [P] [US2] Research UI: input → result with Fact / Inference / Hypothesis
+- [X] **T2.6** [US2] Persist report + log tokens/run into `ai_run_logs`
+- [X] **T2.7** ➕ [SYS] Cap configuration storage per FR-Q-002 resolution — cap must read from data, not a constant
+- [X] **T2.8** ➕ [SYS] Cap enforcement is transactional — check and increment in one transaction so concurrent runs cannot both pass at the boundary
+- [X] **T2.9** ➕ [US2] Unit test: prompt assembly throws when the claim set is missing
+- [X] **T2.10** ➕ [US2] Integration test: run at the cap boundary is refused and makes no provider call
+- [X] **T2.11** ➕ [US2] Failure path: provider timeout / error / unparseable output logs a failed run and saves no partial report
 
 **DoD:** One real report saved under Lumo workspace; cap enforced under concurrency; every run logged.
+**DoD status:** code complete; no real report has been generated (no database, no provider key).
 
 ---
 
@@ -102,19 +114,20 @@ To close it:
 
 **Goal**: Draft → human decision works end to end, and nothing publishes itself.
 
-- [ ] **T3.1** [US3] Migration: `content_drafts`, `approvals` + RLS policies
-- [ ] **T3.2** [US3] `POST /api/ops/content/run` → status `awaiting_approval`
-- [ ] **T3.3** [P] [US3] Content list + detail UI — `app/(ops)/content/`
-- [ ] **T3.4** [P] [US4] Approvals inbox UI — `app/(ops)/approvals/`
-- [ ] **T3.5** [US4] `POST /api/ops/approvals/:id/decision` — approve | reject | edit-and-approve
-- [ ] **T3.6** [US4] Manual "mark published" action (status transition only, no outbound call)
-- [ ] **T3.7** ➕ [US4] Write an `audit_logs` row in the same transaction as every approval decision
-- [ ] **T3.8** ➕ [US4] Approval authority gate per FR-Q-001 resolution
-- [ ] **T3.9** ➕ [US4] Edit-and-approve retains both the model's original payload and the edited one in the audit trail
-- [ ] **T3.10** ➕ [SYS] CI guard: no social/publish SDK in `package.json` (Constitution I, SC-007)
-- [ ] **T3.11** ➕ [US3] Integration test: forbidden claim in the workspace does not appear in approved output (SC-005)
+- [X] **T3.1** [US3] Migration: `content_drafts`, `approvals` + RLS policies
+- [X] **T3.2** [US3] `POST /api/ops/content/run` → status `awaiting_approval`
+- [X] **T3.3** [P] [US3] Content list + detail UI — `app/(ops)/content/`
+- [X] **T3.4** [P] [US4] Approvals inbox UI — `app/(ops)/approvals/`
+- [X] **T3.5** [US4] `POST /api/ops/approvals/:id/decision` — approve | reject | edit-and-approve
+- [X] **T3.6** [US4] Manual "mark published" action (status transition only, no outbound call)
+- [X] **T3.7** ➕ [US4] Write an `audit_logs` row in the same transaction as every approval decision
+- [X] **T3.8** ➕ [US4] Approval authority gate per FR-Q-001 resolution
+- [X] **T3.9** ➕ [US4] Edit-and-approve retains both the model's original payload and the edited one in the audit trail
+- [X] **T3.10** ➕ [SYS] CI guard: no social/publish SDK in `package.json` (Constitution I, SC-007)
+- [X] **T3.11** ➕ [US3] Integration test: forbidden claim in the workspace does not appear in approved output (SC-005)
 
 **DoD:** Draft → approve path works end-to-end; no auto-publish; every decision audited.
+**DoD status:** code complete; the end-to-end path has never been executed.
 
 ---
 
@@ -123,16 +136,17 @@ To close it:
 **Goal**: Inbound leads land, get classified from workspace knowledge, and alert the owner.
 **Blocked by**: FR-Q-003 and FR-Q-004.
 
-- [ ] **T4.1** [US5] Migration: `leads` + RLS policies
-- [ ] **T4.2** [US5] `POST /api/ops/leads/ingest` — API key or signed secret per workspace
-- [ ] **T4.3** [US5] Classify segment / intent via LLM using knowledge base only
-- [ ] **T4.4** [US5] Email notify owner on high intent — `lib/email/` (Resend)
-- [ ] **T4.5** [P] [US5] Leads UI list / detail
-- [ ] **T4.6** ➕ [US5] Integration test: unauthenticated ingest is rejected and stores nothing
-- [ ] **T4.7** ➕ [US5] Confirm no code path can email the lead — only the workspace owner (Constitution IV)
-- [ ] **T4.8** ➕ [US5] Duplicate-lead handling: same email from two sources
+- [X] **T4.1** [US5] Migration: `leads` + RLS policies
+- [X] **T4.2** [US5] `POST /api/ops/leads/ingest` — API key or signed secret per workspace
+- [X] **T4.3** [US5] Classify segment / intent via LLM using knowledge base only
+- [X] **T4.4** [US5] Email notify owner on high intent — `lib/email/` (Resend)
+- [X] **T4.5** [P] [US5] Leads UI list / detail
+- [X] **T4.6** ➕ [US5] Integration test: unauthenticated ingest is rejected and stores nothing
+- [X] **T4.7** ➕ [US5] Confirm no code path can email the lead — only the workspace owner (Constitution IV)
+- [X] **T4.8** ➕ [US5] Duplicate-lead handling: same email from two sources
 
 **DoD:** Test ingest creates lead; high intent sends email to the owner and nothing to the lead.
+**DoD status:** code complete; no ingest call has been made, no email sent.
 
 ---
 
@@ -140,15 +154,16 @@ To close it:
 
 **Goal**: The constitution self-audit passes and the MVP is usable for Lumo.
 
-- [ ] **T5.1** [US6] `campaigns` table + run API + UI, mirroring the content approval pipeline
-- [ ] **T5.2** [SYS] Settings: AI cap, notify email — `app/(ops)/settings/`
-- [ ] **T5.3** [SYS] Create second workspace (script or minimal UI)
-- [ ] **T5.4** [SYS] Isolation test: workspace A cannot read B
-- [ ] **T5.5** [SYS] Audit log viewer
-- [ ] **T5.6** ➕ [US6] Approving a campaign containing an email draft sends no email
-- [ ] **T5.7** ➕ [SYS] Run the constitution's six self-audit questions against the finished build and record the result
+- [X] **T5.1** [US6] `campaigns` table + run API + UI, mirroring the content approval pipeline
+- [X] **T5.2** [SYS] Settings: AI cap, notify email — `app/(ops)/settings/`
+- [X] **T5.3** [SYS] Create second workspace (script or minimal UI)
+- [X] **T5.4** [SYS] Isolation test: workspace A cannot read B
+- [X] **T5.5** [SYS] Audit log viewer
+- [X] **T5.6** ➕ [US6] Approving a campaign containing an email draft sends no email
+- [X] **T5.7** ➕ [SYS] Run the constitution's six self-audit questions against the finished build and record the result
 
 **DoD:** Constitution self-audit passes; core MVP usable for Lumo; second workspace isolated.
+**DoD status:** self-audit run against the code (T5.7 below); isolation proven only by unrun tests.
 
 ---
 

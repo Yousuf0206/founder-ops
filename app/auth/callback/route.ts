@@ -1,27 +1,61 @@
+import { cookies } from "next/headers";
 import { NextResponse, type NextRequest } from "next/server";
+import type { EmailOtpType } from "@supabase/supabase-js";
 
 import { createSupabaseServerClient } from "@/lib/db/server";
 
-/** Exchanges the magic-link code for a session cookie, then continues. */
+const NEXT_COOKIE = "founder-ops-auth-next";
+
+/** Only ever redirect to a path on this origin. */
+function safePath(next: string | null): string {
+  return next && next.startsWith("/") && !next.startsWith("//") ? next : "/";
+}
+
+/**
+ * Completes an email sign-in, then continues.
+ *
+ * Supabase can land here in three shapes depending on the project's email
+ * template and flow: `?code=` (PKCE), `?token_hash=&type=` (the newer default
+ * template), or `?error=&error_description=` when the link expired or was
+ * already consumed — often by a mail scanner opening it first.
+ */
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
-  const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/";
+  const cookieStore = await cookies();
 
-  if (!code) {
-    return NextResponse.redirect(`${origin}/login?error=Missing+sign-in+code`);
-  }
+  // token_hash links cannot carry a query param, so fall back to what the login
+  // form stashed. Consumed either way, so it cannot leak into a later sign-in.
+  const next = safePath(
+    searchParams.get("next") ?? cookieStore.get(NEXT_COOKIE)?.value ?? null,
+  );
+  cookieStore.delete(NEXT_COOKIE);
+
+  const fail = (message: string) =>
+    NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(message)}`);
+
+  // Supabase reports its own failures as query params, not as a missing code.
+  const providerError =
+    searchParams.get("error_description") ?? searchParams.get("error");
+  if (providerError) return fail(providerError);
 
   const supabase = await createSupabaseServerClient();
-  const { error } = await supabase.auth.exchangeCodeForSession(code);
 
-  if (error) {
-    return NextResponse.redirect(
-      `${origin}/login?error=${encodeURIComponent(error.message)}`,
-    );
+  const code = searchParams.get("code");
+  if (code) {
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    if (error) return fail(error.message);
+    return NextResponse.redirect(`${origin}${next}`);
   }
 
-  // Only ever redirect to a path on this origin.
-  const safeNext = next.startsWith("/") ? next : "/";
-  return NextResponse.redirect(`${origin}${safeNext}`);
+  const tokenHash = searchParams.get("token_hash");
+  const type = searchParams.get("type") as EmailOtpType | null;
+  if (tokenHash && type) {
+    const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type });
+    if (error) return fail(error.message);
+    return NextResponse.redirect(`${origin}${next}`);
+  }
+
+  return fail(
+    "That sign-in link did not carry a code. Open the most recent link in the same browser you requested it from, and check that NEXT_PUBLIC_SITE_URL matches the host you are browsing.",
+  );
 }
