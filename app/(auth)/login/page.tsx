@@ -1,6 +1,10 @@
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { createSupabaseServerClient } from "@/lib/db/server";
+
+/** Where /auth/callback should land, stashed because the email link cannot carry it. */
+const NEXT_COOKIE = "founder-ops-auth-next";
 
 /**
  * Login (T0.5). Magic-link email sign-in — no password storage, and it doubles
@@ -25,6 +29,17 @@ export default async function LoginPage({
 
     const supabase = await createSupabaseServerClient();
     const origin = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+
+    // Only ever remember a path on this origin.
+    if (next.startsWith("/") && !next.startsWith("//")) {
+      (await cookies()).set(NEXT_COOKIE, next, {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: origin.startsWith("https://"),
+        path: "/",
+        maxAge: 60 * 60,
+      });
+    }
 
     const { error } = await supabase.auth.signInWithOtp({
       email,
