@@ -4,11 +4,14 @@ import { config } from "dotenv";
 config({ path: ".env.local" });
 
 /**
- * Test harness against a LOCAL Supabase instance (T0.12).
+ * Test harness against a LOCAL Supabase instance (T0.12), or an explicitly
+ * opted-in dedicated remote test project (no local Docker available).
  *
  * These tests create and delete real users and workspaces. They refuse to run
- * unless TEST_SUPABASE_URL points at localhost, so a misconfigured .env.local
- * cannot aim them at a hosted project.
+ * against TEST_SUPABASE_URL when it is missing, when it is local but the app's
+ * own project (a copy-paste mistake), or when it points remote without the
+ * explicit TEST_SUPABASE_ALLOW_REMOTE=true opt-in — so a misconfigured
+ * .env.local cannot aim them at production by accident.
  */
 
 export function testEnv() {
@@ -19,9 +22,18 @@ export function testEnv() {
   if (!url || !anonKey || !serviceRoleKey) return null;
 
   const host = new URL(url).hostname;
-  if (host !== "localhost" && host !== "127.0.0.1") {
+  const isLocal = host === "localhost" || host === "127.0.0.1";
+
+  if (url === process.env.NEXT_PUBLIC_SUPABASE_URL) {
     throw new Error(
-      `Refusing to run destructive tests against ${host}. TEST_SUPABASE_URL must be local.`,
+      "Refusing to run destructive tests: TEST_SUPABASE_URL is the same as NEXT_PUBLIC_SUPABASE_URL (production).",
+    );
+  }
+
+  if (!isLocal && process.env.TEST_SUPABASE_ALLOW_REMOTE !== "true") {
+    throw new Error(
+      `Refusing to run destructive tests against ${host}. TEST_SUPABASE_URL must be local, ` +
+        `or set TEST_SUPABASE_ALLOW_REMOTE=true to confirm this is a dedicated remote test project.`,
     );
   }
 

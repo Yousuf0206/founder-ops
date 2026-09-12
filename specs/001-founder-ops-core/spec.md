@@ -284,20 +284,31 @@ the same pending queue as content drafts.
   `accept_invitation()` and creates the membership. Invitations are owner-only to create;
   a token addressed to one email cannot be redeemed by another account.
 
+### Assumptions Taken Without an Answer
+
+*Implemented 2026-09-11 to unblock Phases 3-4. These were NOT decided by the product
+owner — each is a defensible default, and each is cheap to change if wrong.*
+
+- **FR-Q-001 — editor approval rights**: implemented as a per-membership `can_approve`
+  flag that an owner toggles in Settings. Owners always approve; editors approve only when
+  granted; viewers never. The spec's phrase "approve if permitted" reads as a grant, which
+  is what this is. *If the intent was instead "editors may approve content but not
+  campaigns", this becomes a per-target-type grant — a column change, not a redesign.*
+- **FR-Q-003 — lead score and high-intent threshold**: score is 0-100; intent `high`
+  requires >= 70, which is what triggers the owner notification.
+- **FR-Q-004 — lead vocabularies**: fixed enums, because a classifier cannot be tested
+  against free text. `segment`: student, parent, teacher, institution, partner, other,
+  unknown. `intent`: high, medium, low, unknown. `stage`: new, classified, reviewing,
+  contacted, qualified, archived. *Changing any of these is an enum migration.*
+
 ### Open Questions
 
-- **FR-Q-001**: "Editor: … approve if permitted" — what grants the permission?
-  [NEEDS CLARIFICATION: is approval a per-membership flag set by the owner, a
-  per-target-type setting, or are editors simply allowed to approve content but not
-  campaigns?]
-- **FR-Q-003**: Lead `score` [NEEDS CLARIFICATION: what scale, and what threshold counts
-  as "high intent" for the owner notification?]
-- **FR-Q-004**: Lead `segment` and `stage` [NEEDS CLARIFICATION: are these free text or a
-  fixed vocabulary? A fixed set is needed for the classifier to be testable.]
 - **FR-Q-005**: Telegram appears in the scope ladder ("THEN: campaigns, roles UI polish,
   Telegram") but has no requirement anywhere [NEEDS CLARIFICATION: what is it for —
   notifications to the team, or an input channel? Note that outbound messaging to
-  non-team recipients is barred by Constitution IV.]
+  non-team recipients is barred by Constitution IV.] **Not implemented.** No Telegram code
+  exists, and `telegraf` / `node-telegram-bot-api` are blocked by
+  `scripts/check-no-publish.mjs`.
 
 ### Key Entities
 
