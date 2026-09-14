@@ -22,7 +22,7 @@ export async function Invitations({ workspaceId }: { workspaceId: string }) {
   return (
     <section className="mt-10">
       <h2 className="text-sm font-medium">Invite members</h2>
-      <p className="mt-1 text-sm text-[--color-muted]">
+      <p className="mt-1 text-sm text-muted">
         Send the invitation link to that person. They sign in or create an account with the
         same email, then join this workspace.
       </p>
@@ -30,7 +30,7 @@ export async function Invitations({ workspaceId }: { workspaceId: string }) {
       <InviteForm />
 
       {(pending ?? []).length > 0 && (
-        <ul className="mt-4 divide-y divide-[--color-line] rounded-lg border border-[--color-line] bg-[--color-surface]">
+        <ul className="mt-4 divide-y divide-line rounded-lg border border-line bg-surface">
           {(pending ?? []).map((invite) => {
             const expired = new Date(invite.expires_at).getTime() <= now;
             return (
@@ -38,7 +38,7 @@ export async function Invitations({ workspaceId }: { workspaceId: string }) {
                 <div className="flex items-center justify-between gap-4">
                   <span>
                     <span className="font-medium">{invite.email}</span>
-                    <span className="ml-2 text-xs uppercase tracking-wide text-[--color-muted]">
+                    <span className="ml-2 text-xs uppercase tracking-wide text-muted">
                       {invite.role}
                     </span>
                     {expired && <span className="ml-2 text-xs text-red-600">expired</span>}
@@ -47,14 +47,14 @@ export async function Invitations({ workspaceId }: { workspaceId: string }) {
                     <input type="hidden" name="invitation_id" value={invite.id} />
                     <button
                       type="submit"
-                      className="rounded-md border border-[--color-line] px-2 py-1 text-xs"
+                      className="rounded-md border border-line px-2 py-1 text-xs"
                     >
                       Revoke
                     </button>
                   </form>
                 </div>
                 {!expired && (
-                  <code className="block break-all text-xs text-[--color-muted]">
+                  <code className="block break-all text-xs text-muted">
                     {`${origin}/invite/${invite.token}`}
                   </code>
                 )}

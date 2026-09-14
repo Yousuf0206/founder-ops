@@ -29,28 +29,28 @@ export default async function ReportPage({ params }: { params: Promise<{ id: str
 
   return (
     <div className="max-w-3xl">
-      <Link href="/research" className="text-sm text-[--color-muted]">
+      <Link href="/research" className="text-sm text-muted">
         ← Research
       </Link>
       <h1 className="mt-2 text-xl font-semibold tracking-tight">{report.title}</h1>
-      <p className="mt-1 text-sm text-[--color-muted]">
+      <p className="mt-1 text-sm text-muted">
         {new Date(report.created_at).toLocaleString()}
       </p>
 
       {report.status === "failed" ? (
         <div className="mt-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm">
           <p className="font-medium">This run failed.</p>
-          <p className="mt-1 text-[--color-muted]">{report.error}</p>
+          <p className="mt-1 text-muted">{report.error}</p>
         </div>
       ) : (
         output && <ReportBody output={output} />
       )}
 
       <details className="mt-10">
-        <summary className="cursor-pointer text-sm text-[--color-muted]">
+        <summary className="cursor-pointer text-sm text-muted">
           Source notes
         </summary>
-        <pre className="mt-2 overflow-x-auto whitespace-pre-wrap rounded-lg border border-[--color-line] bg-[--color-surface] p-4 text-xs">
+        <pre className="mt-2 overflow-x-auto whitespace-pre-wrap rounded-lg border border-line bg-surface p-4 text-xs">
           {report.input_blob}
         </pre>
       </details>
@@ -66,14 +66,14 @@ function ReportBody({ output }: { output: ResearchOutput }) {
       {output.opportunities.map((opportunity, index) => (
         <section
           key={`${opportunity.title}-${index}`}
-          className="mt-6 rounded-lg border border-[--color-line] bg-[--color-surface] p-4"
+          className="mt-6 rounded-lg border border-line bg-surface p-4"
         >
           <h2 className="text-sm font-semibold">
             {opportunity.rank ? `${opportunity.rank}. ` : ""}
             {opportunity.title}
           </h2>
           {opportunity.rationale && (
-            <p className="mt-1 text-sm text-[--color-muted]">{opportunity.rationale}</p>
+            <p className="mt-1 text-sm text-muted">{opportunity.rationale}</p>
           )}
 
           {opportunity.findings.length > 0 && (
@@ -82,7 +82,7 @@ function ReportBody({ output }: { output: ResearchOutput }) {
                 <li key={findingIndex} className="flex gap-2 text-sm">
                   <span
                     className={`h-fit shrink-0 rounded border px-1.5 py-0.5 text-xs ${
-                      LABEL_STYLE[finding.label] ?? "border-[--color-line]"
+                      LABEL_STYLE[finding.label] ?? "border-line"
                     }`}
                   >
                     {finding.label}
@@ -95,7 +95,7 @@ function ReportBody({ output }: { output: ResearchOutput }) {
 
           {opportunity.suggested_next_step && (
             <p className="mt-3 text-sm">
-              <span className="text-[--color-muted]">Next step: </span>
+              <span className="text-muted">Next step: </span>
               {opportunity.suggested_next_step}
             </p>
           )}
@@ -105,7 +105,7 @@ function ReportBody({ output }: { output: ResearchOutput }) {
       {output.open_questions.length > 0 && (
         <section className="mt-6">
           <h2 className="text-sm font-medium">Open questions</h2>
-          <ul className="mt-2 list-inside list-disc text-sm text-[--color-muted]">
+          <ul className="mt-2 list-inside list-disc text-sm text-muted">
             {output.open_questions.map((question) => (
               <li key={question}>{question}</li>
             ))}

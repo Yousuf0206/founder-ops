@@ -23,7 +23,7 @@ export function StageForm({ leadId, stage }: { leadId: string; stage: string }) 
   const [state, formAction] = useActionState<StageState, FormData>(setStageAction, {});
 
   return (
-    <form action={formAction} className="mt-8 border-t border-[--color-line] pt-4">
+    <form action={formAction} className="mt-8 border-t border-line pt-4">
       <input type="hidden" name="lead_id" value={leadId} />
 
       <label htmlFor="stage" className="text-sm font-medium">
@@ -34,7 +34,7 @@ export function StageForm({ leadId, stage }: { leadId: string; stage: string }) 
           id="stage"
           name="stage"
           defaultValue={stage}
-          className="rounded-md border border-[--color-line] bg-[--color-surface] px-3 py-2 text-sm"
+          className="rounded-md border border-line bg-surface px-3 py-2 text-sm"
         >
           {STAGES.map((option) => (
             <option key={option} value={option}>
@@ -44,13 +44,13 @@ export function StageForm({ leadId, stage }: { leadId: string; stage: string }) 
         </select>
         <button
           type="submit"
-          className="rounded-md border border-[--color-line] px-3 py-2 text-sm"
+          className="rounded-md border border-line px-3 py-2 text-sm"
         >
           Update
         </button>
       </div>
 
-      <p className="mt-2 text-xs text-[--color-muted]">
+      <p className="mt-2 text-xs text-muted">
         Marking &ldquo;contacted&rdquo; records that a person reached out themselves. It sends
         nothing.
       </p>

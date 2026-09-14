@@ -50,7 +50,7 @@ export default async function ResetPasswordPage({
   return (
     <div className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-6">
       <h1 className="text-lg font-semibold tracking-tight">Choose a new password</h1>
-      <p className="mt-1 text-sm text-[--color-muted]">For {user.email}</p>
+      <p className="mt-1 text-sm text-muted">For {user.email}</p>
 
       {params.error && (
         <p role="alert" className="mt-6 text-sm text-red-600">
@@ -70,7 +70,7 @@ export default async function ResetPasswordPage({
           minLength={8}
           maxLength={72}
           autoComplete="new-password"
-          className="rounded-md border border-[--color-line] bg-[--color-surface] px-3 py-2 text-sm"
+          className="rounded-md border border-line bg-surface px-3 py-2 text-sm"
         />
         <label className="text-sm" htmlFor="confirm">
           Confirm new password
@@ -83,11 +83,11 @@ export default async function ResetPasswordPage({
           minLength={8}
           maxLength={72}
           autoComplete="new-password"
-          className="rounded-md border border-[--color-line] bg-[--color-surface] px-3 py-2 text-sm"
+          className="rounded-md border border-line bg-surface px-3 py-2 text-sm"
         />
         <button
           type="submit"
-          className="rounded-md bg-[--color-accent] px-3 py-2 text-sm font-medium text-white"
+          className="rounded-md bg-accent px-3 py-2 text-sm font-medium text-white"
         >
           Save password
         </button>

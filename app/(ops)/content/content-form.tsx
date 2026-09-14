@@ -26,7 +26,7 @@ export function ContentForm({ disabled }: { disabled?: string }) {
 
       {state.error && <p className="text-sm text-red-600">{state.error}</p>}
 
-      <p className="text-xs text-[--color-muted]">
+      <p className="text-xs text-muted">
         Drafts land in the approvals queue. Nothing is published by this system.
       </p>
 
@@ -52,14 +52,14 @@ function Field({
     <div className="flex flex-col gap-1.5">
       <label htmlFor={name} className="text-sm font-medium">
         {label}
-        {!required && <span className="font-normal text-[--color-muted]"> (optional)</span>}
+        {!required && <span className="font-normal text-muted"> (optional)</span>}
       </label>
       <input
         id={name}
         name={name}
         required={required}
         placeholder={placeholder}
-        className="w-full rounded-md border border-[--color-line] bg-[--color-surface] px-3 py-2 text-sm"
+        className="w-full rounded-md border border-line bg-surface px-3 py-2 text-sm"
       />
     </div>
   );
@@ -71,7 +71,7 @@ function Submit() {
     <button
       type="submit"
       disabled={pending}
-      className="rounded-md bg-[--color-accent] px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
+      className="rounded-md bg-accent px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
     >
       {pending ? "Drafting… (up to 60s)" : "Draft content"}
     </button>

@@ -15,11 +15,11 @@ export default async function ClaimsPage() {
 
   return (
     <div className="max-w-2xl">
-      <Link href="/knowledge" className="text-sm text-[--color-muted]">
+      <Link href="/knowledge" className="text-sm text-muted">
         ← Knowledge
       </Link>
       <h1 className="mt-2 text-xl font-semibold tracking-tight">Claim set</h1>
-      <p className="mt-1 text-sm text-[--color-muted]">
+      <p className="mt-1 text-sm text-muted">
         Binds every AI prompt in this workspace. Editing it changes what the bots may say from
         the next run onward — it does not revisit drafts already generated.
       </p>
@@ -48,11 +48,11 @@ function ReadOnlyClaims({
       <ClaimList title="Forbidden claims" claims={forbidden} />
       <section>
         <h2 className="text-sm font-medium">Brand voice</h2>
-        <p className="mt-2 whitespace-pre-wrap rounded-lg border border-[--color-line] bg-[--color-surface] p-4 text-sm">
-          {brandVoice.trim() || <span className="text-[--color-muted]">Not set</span>}
+        <p className="mt-2 whitespace-pre-wrap rounded-lg border border-line bg-surface p-4 text-sm">
+          {brandVoice.trim() || <span className="text-muted">Not set</span>}
         </p>
       </section>
-      <p className="text-xs text-[--color-muted]">
+      <p className="text-xs text-muted">
         You have viewer access, so the claim set is read-only.
       </p>
     </div>
@@ -64,9 +64,9 @@ function ClaimList({ title, claims }: { title: string; claims: string[] }) {
     <section>
       <h2 className="text-sm font-medium">{title}</h2>
       {claims.length === 0 ? (
-        <p className="mt-2 text-sm text-[--color-muted]">None defined.</p>
+        <p className="mt-2 text-sm text-muted">None defined.</p>
       ) : (
-        <ul className="mt-2 list-inside list-disc rounded-lg border border-[--color-line] bg-[--color-surface] p-4 text-sm">
+        <ul className="mt-2 list-inside list-disc rounded-lg border border-line bg-surface p-4 text-sm">
           {claims.map((claim) => (
             <li key={claim}>{claim}</li>
           ))}

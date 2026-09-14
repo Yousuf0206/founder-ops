@@ -97,7 +97,7 @@ export default async function LoginPage({
   return (
     <div className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-6">
       <h1 className="text-lg font-semibold tracking-tight">Founder Ops</h1>
-      <p className="mt-1 text-sm text-[--color-muted]">
+      <p className="mt-1 text-sm text-muted">
         {signingUp ? "Create your account to get started." : "Sign in to your workspace."}
       </p>
 
@@ -118,7 +118,7 @@ export default async function LoginPage({
           type="email"
           required
           autoComplete="email"
-          className="rounded-md border border-[--color-line] bg-[--color-surface] px-3 py-2 text-sm"
+          className="rounded-md border border-line bg-surface px-3 py-2 text-sm"
           placeholder="you@example.com"
         />
         <label className="text-sm" htmlFor="password">
@@ -132,28 +132,28 @@ export default async function LoginPage({
           minLength={signingUp ? 8 : undefined}
           maxLength={72}
           autoComplete={signingUp ? "new-password" : "current-password"}
-          className="rounded-md border border-[--color-line] bg-[--color-surface] px-3 py-2 text-sm"
+          className="rounded-md border border-line bg-surface px-3 py-2 text-sm"
         />
         {signingUp ? (
-          <p className="text-xs text-[--color-muted]">At least 8 characters.</p>
+          <p className="text-xs text-muted">At least 8 characters.</p>
         ) : (
-          <a href="/forgot-password" className="self-end text-xs text-[--color-muted] underline">
+          <a href="/forgot-password" className="self-end text-xs text-muted underline">
             Forgot password?
           </a>
         )}
         <button
           type="submit"
-          className="rounded-md bg-[--color-accent] px-3 py-2 text-sm font-medium text-white"
+          className="rounded-md bg-accent px-3 py-2 text-sm font-medium text-white"
         >
           {signingUp ? "Create account" : "Sign in"}
         </button>
       </form>
 
-      <p className="mt-6 text-sm text-[--color-muted]">
+      <p className="mt-6 text-sm text-muted">
         {signingUp ? "Already have an account? " : "New to Founder Ops? "}
         <a
           href={loginUrl(next, signingUp ? "signin" : "signup")}
-          className="font-medium text-[--color-ink] underline"
+          className="font-medium text-ink underline"
         >
           {signingUp ? "Sign in" : "Create an account"}
         </a>

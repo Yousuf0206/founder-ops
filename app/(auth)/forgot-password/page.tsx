@@ -52,13 +52,13 @@ export default async function ForgotPasswordPage({
       <h1 className="text-lg font-semibold tracking-tight">Reset your password</h1>
 
       {params.sent ? (
-        <div className="mt-6 rounded-lg border border-[--color-line] bg-[--color-surface] p-4 text-sm">
+        <div className="mt-6 rounded-lg border border-line bg-surface p-4 text-sm">
           If an account exists for that email, a reset link is on its way. You can open it
           on any device. It expires in one hour.
         </div>
       ) : (
         <>
-          <p className="mt-1 text-sm text-[--color-muted]">
+          <p className="mt-1 text-sm text-muted">
             Enter your account email and we&apos;ll send you a link to set a new password.
           </p>
 
@@ -78,12 +78,12 @@ export default async function ForgotPasswordPage({
               type="email"
               required
               autoComplete="email"
-              className="rounded-md border border-[--color-line] bg-[--color-surface] px-3 py-2 text-sm"
+              className="rounded-md border border-line bg-surface px-3 py-2 text-sm"
               placeholder="you@example.com"
             />
             <button
               type="submit"
-              className="rounded-md bg-[--color-accent] px-3 py-2 text-sm font-medium text-white"
+              className="rounded-md bg-accent px-3 py-2 text-sm font-medium text-white"
             >
               Send reset link
             </button>
@@ -91,8 +91,8 @@ export default async function ForgotPasswordPage({
         </>
       )}
 
-      <p className="mt-6 text-sm text-[--color-muted]">
-        <Link href="/login" className="font-medium text-[--color-ink] underline">
+      <p className="mt-6 text-sm text-muted">
+        <Link href="/login" className="font-medium text-ink underline">
           Back to sign in
         </Link>
       </p>

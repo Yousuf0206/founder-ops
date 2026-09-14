@@ -38,11 +38,11 @@ export default async function CampaignsPage() {
       <div className="flex items-start justify-between gap-6">
         <div>
           <h1 className="text-xl font-semibold tracking-tight">Campaigns</h1>
-          <p className="mt-1 text-sm text-[--color-muted]">
+          <p className="mt-1 text-sm text-muted">
             Turn a goal into positioning, posts, an email draft, and an experiment.
           </p>
         </div>
-        <p className="shrink-0 text-xs text-[--color-muted]">
+        <p className="shrink-0 text-xs text-muted">
           {cap.used} / {cap.cap} runs today
         </p>
       </div>
@@ -51,16 +51,16 @@ export default async function CampaignsPage() {
 
       <h2 className="mt-10 text-sm font-medium">Campaigns</h2>
       {(campaigns ?? []).length === 0 ? (
-        <p className="mt-3 rounded-lg border border-dashed border-[--color-line] p-6 text-sm text-[--color-muted]">
+        <p className="mt-3 rounded-lg border border-dashed border-line p-6 text-sm text-muted">
           No campaigns yet.
         </p>
       ) : (
-        <ul className="mt-3 divide-y divide-[--color-line] rounded-lg border border-[--color-line] bg-[--color-surface]">
+        <ul className="mt-3 divide-y divide-line rounded-lg border border-line bg-surface">
           {(campaigns ?? []).map((campaign) => (
             <li key={campaign.id}>
               <Link
                 href={`/campaigns/${campaign.id}`}
-                className="flex items-baseline justify-between gap-4 px-4 py-3 hover:bg-[--color-ground]"
+                className="flex items-baseline justify-between gap-4 px-4 py-3 hover:bg-ground"
               >
                 <span className="min-w-0 truncate text-sm font-medium">{campaign.goal}</span>
                 <StatusPill status={campaign.status} />

@@ -42,12 +42,12 @@ export default async function ResearchPage() {
       <div className="flex items-start justify-between gap-6">
         <div>
           <h1 className="text-xl font-semibold tracking-tight">Research</h1>
-          <p className="mt-1 text-sm text-[--color-muted]">
+          <p className="mt-1 text-sm text-muted">
             Turn raw notes into ranked opportunities. Internal only — reports are never sent
             anywhere.
           </p>
         </div>
-        <p className="shrink-0 text-xs text-[--color-muted]">
+        <p className="shrink-0 text-xs text-muted">
           {cap.used} / {cap.cap} runs today
         </p>
       </div>
@@ -56,19 +56,19 @@ export default async function ResearchPage() {
 
       <h2 className="mt-10 text-sm font-medium">Reports</h2>
       {(reports ?? []).length === 0 ? (
-        <p className="mt-3 rounded-lg border border-dashed border-[--color-line] p-6 text-sm text-[--color-muted]">
+        <p className="mt-3 rounded-lg border border-dashed border-line p-6 text-sm text-muted">
           No reports yet.
         </p>
       ) : (
-        <ul className="mt-3 divide-y divide-[--color-line] rounded-lg border border-[--color-line] bg-[--color-surface]">
+        <ul className="mt-3 divide-y divide-line rounded-lg border border-line bg-surface">
           {(reports ?? []).map((report) => (
             <li key={report.id}>
               <Link
                 href={`/research/${report.id}`}
-                className="flex items-baseline justify-between gap-4 px-4 py-3 hover:bg-[--color-ground]"
+                className="flex items-baseline justify-between gap-4 px-4 py-3 hover:bg-ground"
               >
                 <span className="text-sm font-medium">{report.title}</span>
-                <span className="shrink-0 text-xs text-[--color-muted]">
+                <span className="shrink-0 text-xs text-muted">
                   {report.status === "failed" && "failed · "}
                   {new Date(report.created_at).toLocaleDateString()}
                 </span>

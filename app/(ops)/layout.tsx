@@ -54,12 +54,12 @@ export default async function OpsLayout({
 
   return (
     <div className="mx-auto flex min-h-screen max-w-6xl flex-col px-6">
-      <header className="flex items-center justify-between border-b border-[--color-line] py-4">
+      <header className="flex items-center justify-between border-b border-line py-4">
         <div className="flex items-baseline gap-3">
           <span className="text-sm font-semibold tracking-tight">Founder Ops</span>
-          <span className="text-sm text-[--color-muted]">{activeWorkspace.workspaceName}</span>
+          <span className="text-sm text-muted">{activeWorkspace.workspaceName}</span>
         </div>
-        <div className="flex flex-wrap items-center justify-end gap-3 text-sm text-[--color-muted]">
+        <div className="flex flex-wrap items-center justify-end gap-3 text-sm text-muted">
           {memberships.length > 1 && (
             <form action={switchWorkspaceAction} className="flex items-center gap-2">
               <label htmlFor="workspace_id" className="sr-only">
@@ -69,7 +69,7 @@ export default async function OpsLayout({
                 id="workspace_id"
                 name="workspace_id"
                 defaultValue={activeWorkspace.workspaceId}
-                className="rounded-md border border-[--color-line] bg-[--color-surface] px-2 py-1 text-sm"
+                className="rounded-md border border-line bg-surface px-2 py-1 text-sm"
               >
                 {memberships.map((m) => (
                   <option key={m.workspaceId} value={m.workspaceId}>
@@ -82,17 +82,17 @@ export default async function OpsLayout({
               </button>
             </form>
           )}
-          <Link href="/onboarding" className="hover:text-[--color-ink]">
+          <Link href="/onboarding" className="hover:text-ink">
             + New workspace
           </Link>
-          <span className="rounded-full border border-[--color-line] px-2 py-0.5 text-xs uppercase tracking-wide">
+          <span className="rounded-full border border-line px-2 py-0.5 text-xs uppercase tracking-wide">
             {activeWorkspace.role}
           </span>
-          <Link href="/account" className="hover:text-[--color-ink]">
+          <Link href="/account" className="hover:text-ink">
             {email}
           </Link>
           <form action="/auth/sign-out" method="post">
-            <button type="submit" className="hover:text-[--color-ink]">
+            <button type="submit" className="hover:text-ink">
               Sign out
             </button>
           </form>
@@ -106,7 +106,7 @@ export default async function OpsLayout({
               <li key={item.href}>
                 <Link
                   href={item.href}
-                  className="block rounded-md px-3 py-2 text-[--color-muted] hover:bg-[--color-surface] hover:text-[--color-ink]"
+                  className="block rounded-md px-3 py-2 text-muted hover:bg-surface hover:text-ink"
                 >
                   {item.label}
                 </Link>
@@ -117,7 +117,7 @@ export default async function OpsLayout({
         <main className="flex-1">{children}</main>
       </div>
 
-      <footer className="border-t border-[--color-line] py-4 text-xs text-[--color-muted]">
+      <footer className="border-t border-line py-4 text-xs text-muted">
         Drafts only. Nothing here publishes or contacts anyone automatically.
       </footer>
     </div>
