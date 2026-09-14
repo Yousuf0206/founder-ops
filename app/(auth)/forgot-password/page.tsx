@@ -53,8 +53,8 @@ export default async function ForgotPasswordPage({
 
       {params.sent ? (
         <div className="mt-6 rounded-lg border border-[--color-line] bg-[--color-surface] p-4 text-sm">
-          If an account exists for that email, a reset link is on its way. Open it on this
-          device and browser. It expires in one hour.
+          If an account exists for that email, a reset link is on its way. You can open it
+          on any device. It expires in one hour.
         </div>
       ) : (
         <>
