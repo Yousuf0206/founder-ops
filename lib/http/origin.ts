@@ -22,3 +22,26 @@ export async function requestOrigin(): Promise<string> {
 
   return process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 }
+
+/**
+ * The origin to put in links that are EMAILED, e.g. password reset.
+ *
+ * Never taken from request headers: a forged Host header would otherwise make
+ * us email a victim a reset link pointing at an attacker's site, leaking the
+ * token ("password reset poisoning"). In production this is the configured
+ * NEXT_PUBLIC_SITE_URL, or Vercel's production domain if that is unset or
+ * still points at localhost.
+ */
+export async function trustedSiteOrigin(): Promise<string> {
+  const configured = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/+$/, "");
+  const isLocal = (url: string) => /\/\/(localhost|127\.0\.0\.1)(:|\/|$)/.test(url);
+
+  if (process.env.NODE_ENV === "production") {
+    if (configured && !isLocal(configured)) return configured;
+    if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+      return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+    }
+  }
+
+  return configured ?? "http://localhost:3000";
+}

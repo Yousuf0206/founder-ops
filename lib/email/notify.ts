@@ -3,7 +3,9 @@ import "server-only";
 import { Resend } from "resend";
 
 /**
- * The only outbound message path in this product (T4.4, T4.7).
+ * The only outbound path for product notifications (T4.4, T4.7). Account
+ * emails (password reset) live in password-reset.ts and go only to the
+ * account holder's own address.
  *
  * Constitution IV bars cold outreach and bulk messaging. This module therefore
  * exposes exactly one function, it takes no recipient list, and its single
