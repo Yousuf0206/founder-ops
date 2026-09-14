@@ -2,7 +2,7 @@
 
 **Status: BINDING for all implementation.**
 
-Product: Multi-workspace internal OS for marketing, content, sales intake, and R&D.
+Product: Multi-workspace SaaS for marketing, content, sales intake, and R&D.
 First tenant: Lumo Learn.
 
 ## Core Vision
@@ -32,9 +32,10 @@ requirement, not a post-hoc filter.
 Inbound only. No cold email, no bulk sends, no sequenced campaigns to non-consenting
 recipients in v1.
 
-### V. Team-Only, Never Student-Facing
-This is an internal operations tool. No student accounts, no student-facing surfaces, no
-mixing into student UX. Access is team-only and enforced by Supabase RLS.
+### V. Open Sign-Up, Isolated Workspaces, Never Student-Facing
+Anyone may create an account and create workspaces for their own apps. A user sees only
+the workspaces they are a member of, and that isolation is enforced by Supabase RLS. No
+student accounts, no student-facing surfaces, no mixing into student UX.
 
 ### VI. Multi-Workspace From Day One
 Every table, query, policy, and AI run carries `workspace_id` from the first migration,
@@ -91,7 +92,14 @@ bump and a dated entry below.
 1. Does this respect draft-only external actions?
 2. Is all data scoped by `workspace_id`?
 3. Are forbidden claims enforced in the prompts this task touches?
-4. Is this team-only with RLS?
+4. Is workspace data isolated to its members with RLS?
 5. Is anything auto-publishing? If yes → refuse.
 
-**Version**: 1.0.0 | **Ratified**: 2026-09-11 | **Last Amended**: 2026-09-11
+**Version**: 1.1.0 | **Ratified**: 2026-09-11 | **Last Amended**: 2026-09-15
+
+### Amendments
+
+- **1.1.0 — 2026-09-15:** Principle V changed from "Team-Only" to "Open Sign-Up, Isolated
+  Workspaces". Founder Ops is a SaaS for any app, not an internal team tool: anyone can
+  sign up and create workspaces. Workspace isolation via RLS is unchanged. Supersedes the
+  "workspace creation is a seed/admin action" part of ADR-0001.

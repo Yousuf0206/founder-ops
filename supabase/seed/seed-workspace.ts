@@ -1,9 +1,9 @@
 /**
  * Workspace bootstrap (T0.6, FR-Q-006).
  *
- * Workspaces are created here, not through a UI route — creation is a
- * seed/admin action. This uses the service-role key and therefore bypasses RLS
- * by design, which is exactly why it lives in a script rather than in the app.
+ * Admin path for creating a workspace on someone's behalf. Users normally
+ * create their own at /onboarding. This uses the service-role key and
+ * therefore bypasses RLS by design.
  *
  *   npm run seed:workspace -- --name "Lumo Learn" --slug lumo --owner you@example.com
  *

@@ -2,16 +2,18 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { getOpsSession } from "@/lib/auth/session";
+import { switchWorkspaceAction } from "./workspace-actions";
 
 /**
  * The membership gate (T0.7).
  *
- * Two rejections, deliberately distinguished:
- *   - no session          → send to login
- *   - session, no membership → access denied, and no data is fetched
+ * Two cases, deliberately distinguished:
+ *   - no session             → send to login
+ *   - session, no membership → send to /onboarding to create a workspace;
+ *                              no workspace data is fetched
  *
  * This is the outer of two gates. RLS underneath is the one that actually
- * protects the rows; this exists so the UI fails clearly rather than showing
+ * protects the rows; this exists so the UI routes clearly rather than showing
  * an empty shell. (Constitution V)
  */
 
@@ -44,10 +46,11 @@ export default async function OpsLayout({
 
     if (!user) redirect("/login");
 
-    return <AccessDenied email={user.email ?? ""} />;
+    // Signed in but no workspace yet: a new sign-up. Let them create one.
+    redirect("/onboarding");
   }
 
-  const { activeWorkspace, email } = session;
+  const { activeWorkspace, email, memberships } = session;
 
   return (
     <div className="mx-auto flex min-h-screen max-w-6xl flex-col px-6">
@@ -56,11 +59,43 @@ export default async function OpsLayout({
           <span className="text-sm font-semibold tracking-tight">Founder Ops</span>
           <span className="text-sm text-[--color-muted]">{activeWorkspace.workspaceName}</span>
         </div>
-        <div className="flex items-center gap-3 text-sm text-[--color-muted]">
-          <span>{email}</span>
+        <div className="flex flex-wrap items-center justify-end gap-3 text-sm text-[--color-muted]">
+          {memberships.length > 1 && (
+            <form action={switchWorkspaceAction} className="flex items-center gap-2">
+              <label htmlFor="workspace_id" className="sr-only">
+                Workspace
+              </label>
+              <select
+                id="workspace_id"
+                name="workspace_id"
+                defaultValue={activeWorkspace.workspaceId}
+                className="rounded-md border border-[--color-line] bg-[--color-surface] px-2 py-1 text-sm"
+              >
+                {memberships.map((m) => (
+                  <option key={m.workspaceId} value={m.workspaceId}>
+                    {m.workspaceName}
+                  </option>
+                ))}
+              </select>
+              <button type="submit" className="text-xs underline">
+                Switch
+              </button>
+            </form>
+          )}
+          <Link href="/onboarding" className="hover:text-[--color-ink]">
+            + New workspace
+          </Link>
           <span className="rounded-full border border-[--color-line] px-2 py-0.5 text-xs uppercase tracking-wide">
             {activeWorkspace.role}
           </span>
+          <Link href="/account" className="hover:text-[--color-ink]">
+            {email}
+          </Link>
+          <form action="/auth/sign-out" method="post">
+            <button type="submit" className="hover:text-[--color-ink]">
+              Sign out
+            </button>
+          </form>
         </div>
       </header>
 
@@ -89,24 +124,3 @@ export default async function OpsLayout({
   );
 }
 
-function AccessDenied({ email }: { email: string }) {
-  return (
-    <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6">
-      <h1 className="text-lg font-semibold">Access denied</h1>
-      <p className="mt-2 text-sm text-[--color-muted]">
-        You are signed in as {email}, but you are not a member of any workspace.
-      </p>
-      <p className="mt-4 text-sm text-[--color-muted]">
-        Ask a workspace owner to invite this address, then open the invitation link they send you.
-      </p>
-      <form action="/auth/sign-out" method="post" className="mt-6">
-        <button
-          type="submit"
-          className="rounded-md border border-[--color-line] px-3 py-2 text-sm hover:bg-[--color-surface]"
-        >
-          Sign out
-        </button>
-      </form>
-    </div>
-  );
-}

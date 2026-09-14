@@ -25,9 +25,11 @@ export async function GET(request: NextRequest) {
 
   // token_hash links cannot carry a query param, so fall back to what the login
   // form stashed. Consumed either way, so it cannot leak into a later sign-in.
-  const next = safePath(
-    searchParams.get("next") ?? cookieStore.get(NEXT_COOKIE)?.value ?? null,
-  );
+  // A password-recovery link always continues to the new-password form.
+  const next =
+    searchParams.get("type") === "recovery"
+      ? "/reset-password"
+      : safePath(searchParams.get("next") ?? cookieStore.get(NEXT_COOKIE)?.value ?? null);
   cookieStore.delete(NEXT_COOKIE);
 
   const fail = (message: string) =>
