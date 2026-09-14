@@ -35,25 +35,25 @@ export function CampaignForm({ disabled }: { disabled?: string }) {
           rows={3}
           required
           placeholder="Get 200 matric students onto the free tier before exam season"
-          className="w-full rounded-md border border-[--color-line] bg-[--color-surface] px-3 py-2 text-sm"
+          className="w-full rounded-md border border-line bg-surface px-3 py-2 text-sm"
         />
       </div>
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="audience" className="text-sm font-medium">
-          Audience <span className="font-normal text-[--color-muted]">(optional)</span>
+          Audience <span className="font-normal text-muted">(optional)</span>
         </label>
         <input
           id="audience"
           name="audience"
           placeholder="Parents in Lahore and Karachi"
-          className="w-full rounded-md border border-[--color-line] bg-[--color-surface] px-3 py-2 text-sm"
+          className="w-full rounded-md border border-line bg-surface px-3 py-2 text-sm"
         />
       </div>
 
       {state.error && <p className="text-sm text-red-600">{state.error}</p>}
 
-      <p className="text-xs text-[--color-muted]">
+      <p className="text-xs text-muted">
         Campaigns go through the same approval queue as content. The email draft is a draft —
         this system sends nothing.
       </p>
@@ -79,7 +79,7 @@ export function CampaignDecision({
 
   if (status !== "awaiting_approval" && status !== "draft") {
     return (
-      <p className="mt-8 rounded-lg border border-[--color-line] bg-[--color-surface] p-4 text-sm text-[--color-muted]">
+      <p className="mt-8 rounded-lg border border-line bg-surface p-4 text-sm text-muted">
         This campaign has been decided.
       </p>
     );
@@ -88,7 +88,7 @@ export function CampaignDecision({
   return (
     <form
       action={formAction}
-      className="mt-8 rounded-lg border border-[--color-line] bg-[--color-surface] p-4"
+      className="mt-8 rounded-lg border border-line bg-surface p-4"
     >
       <input type="hidden" name="campaign_id" value={campaignId} />
       <h2 className="text-sm font-medium">Decision</h2>
@@ -97,7 +97,7 @@ export function CampaignDecision({
         name="notes"
         rows={2}
         placeholder="Notes (optional)"
-        className="mt-3 w-full rounded-md border border-[--color-line] px-3 py-2 text-sm"
+        className="mt-3 w-full rounded-md border border-line px-3 py-2 text-sm"
       />
 
       {state.error && <p className="mt-2 text-sm text-red-600">{state.error}</p>}
@@ -108,7 +108,7 @@ export function CampaignDecision({
           type="submit"
           name="decision"
           value="approved"
-          className="rounded-md bg-[--color-accent] px-3 py-2 text-sm font-medium text-white"
+          className="rounded-md bg-accent px-3 py-2 text-sm font-medium text-white"
         >
           Approve
         </button>
@@ -131,7 +131,7 @@ function Submit({ idle, busy }: { idle: string; busy: string }) {
     <button
       type="submit"
       disabled={pending}
-      className="rounded-md bg-[--color-accent] px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
+      className="rounded-md bg-accent px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
     >
       {pending ? busy : idle}
     </button>

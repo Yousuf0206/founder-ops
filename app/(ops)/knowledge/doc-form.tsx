@@ -39,7 +39,7 @@ export function DocForm({
           required
           maxLength={200}
           defaultValue={doc?.title ?? ""}
-          className="w-full rounded-md border border-[--color-line] bg-[--color-surface] px-3 py-2 text-sm"
+          className="w-full rounded-md border border-line bg-surface px-3 py-2 text-sm"
         />
       </Field>
 
@@ -49,7 +49,7 @@ export function DocForm({
           name="category"
           maxLength={60}
           defaultValue={doc?.category ?? "general"}
-          className="w-full rounded-md border border-[--color-line] bg-[--color-surface] px-3 py-2 text-sm"
+          className="w-full rounded-md border border-line bg-surface px-3 py-2 text-sm"
         />
       </Field>
 
@@ -59,7 +59,7 @@ export function DocForm({
           name="body"
           rows={16}
           defaultValue={doc?.body ?? ""}
-          className="w-full rounded-md border border-[--color-line] bg-[--color-surface] px-3 py-2 font-mono text-sm"
+          className="w-full rounded-md border border-line bg-surface px-3 py-2 font-mono text-sm"
         />
       </Field>
 
@@ -68,7 +68,7 @@ export function DocForm({
           <input type="checkbox" name="mark_verified" />
           Mark as verified today
           {doc.last_verified_at && (
-            <span className="text-xs text-[--color-muted]">
+            <span className="text-xs text-muted">
               (last verified {new Date(doc.last_verified_at).toLocaleDateString()})
             </span>
           )}
@@ -109,7 +109,7 @@ function Submit({ label }: { label: string }) {
     <button
       type="submit"
       disabled={pending}
-      className="rounded-md bg-[--color-accent] px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
+      className="rounded-md bg-accent px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
     >
       {pending ? "Saving…" : label}
     </button>

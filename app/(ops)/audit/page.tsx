@@ -28,7 +28,7 @@ export default async function AuditPage() {
   return (
     <div>
       <h1 className="text-xl font-semibold tracking-tight">Audit</h1>
-      <p className="mt-1 text-sm text-[--color-muted]">
+      <p className="mt-1 text-sm text-muted">
         Append-only. Written by the database, not by the app, so an actor cannot edit their
         own trail.
       </p>
@@ -36,11 +36,11 @@ export default async function AuditPage() {
       <section className="mt-8">
         <h2 className="text-sm font-medium">Actions</h2>
         {(audits ?? []).length === 0 ? (
-          <p className="mt-3 rounded-lg border border-dashed border-[--color-line] p-6 text-sm text-[--color-muted]">
+          <p className="mt-3 rounded-lg border border-dashed border-line p-6 text-sm text-muted">
             Nothing recorded yet.
           </p>
         ) : (
-          <ul className="mt-3 divide-y divide-[--color-line] rounded-lg border border-[--color-line] bg-[--color-surface] text-sm">
+          <ul className="mt-3 divide-y divide-line rounded-lg border border-line bg-surface text-sm">
             {(audits ?? []).map((entry) => {
               const actor = entry.profiles as unknown as { email: string } | null;
               return (
@@ -48,12 +48,12 @@ export default async function AuditPage() {
                   <span className="min-w-0">
                     <code className="text-xs">{entry.action}</code>
                     {entry.target_type && (
-                      <span className="ml-2 text-xs text-[--color-muted]">
+                      <span className="ml-2 text-xs text-muted">
                         {entry.target_type}
                       </span>
                     )}
                   </span>
-                  <span className="shrink-0 text-xs text-[--color-muted]">
+                  <span className="shrink-0 text-xs text-muted">
                     {actor?.email ?? "system"} · {new Date(entry.created_at).toLocaleString()}
                   </span>
                 </li>
@@ -66,11 +66,11 @@ export default async function AuditPage() {
       <section className="mt-10">
         <h2 className="text-sm font-medium">AI runs</h2>
         {(runs ?? []).length === 0 ? (
-          <p className="mt-3 rounded-lg border border-dashed border-[--color-line] p-6 text-sm text-[--color-muted]">
+          <p className="mt-3 rounded-lg border border-dashed border-line p-6 text-sm text-muted">
             No runs yet.
           </p>
         ) : (
-          <ul className="mt-3 divide-y divide-[--color-line] rounded-lg border border-[--color-line] bg-[--color-surface] text-sm">
+          <ul className="mt-3 divide-y divide-line rounded-lg border border-line bg-surface text-sm">
             {(runs ?? []).map((run) => (
               <li key={run.id} className="px-4 py-2.5">
                 <div className="flex items-baseline justify-between gap-4">
@@ -80,13 +80,13 @@ export default async function AuditPage() {
                       className={`ml-2 text-xs ${
                         run.status === "failed" || run.status === "refused"
                           ? "text-red-600"
-                          : "text-[--color-muted]"
+                          : "text-muted"
                       }`}
                     >
                       {run.status}
                     </span>
                   </span>
-                  <span className="shrink-0 text-xs text-[--color-muted]">
+                  <span className="shrink-0 text-xs text-muted">
                     {run.prompt_tokens !== null &&
                       `${run.prompt_tokens}+${run.output_tokens ?? 0} tok · `}
                     {new Date(run.created_at).toLocaleString()}

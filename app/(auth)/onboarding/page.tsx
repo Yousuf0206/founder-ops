@@ -31,10 +31,12 @@ export default async function OnboardingPage({
 
   if (!user) redirect(`/login?next=${encodeURIComponent("/onboarding")}`);
 
-  const back = (message: string) => `/onboarding?error=${encodeURIComponent(message)}`;
-
   async function createWorkspace(formData: FormData) {
     "use server";
+
+    // Defined inside the action: a server action cannot capture functions from
+    // the component body, because captured values are serialized.
+    const back = (message: string) => `/onboarding?error=${encodeURIComponent(message)}`;
 
     const server = await createSupabaseServerClient();
     const {
@@ -98,7 +100,7 @@ export default async function OnboardingPage({
       <h1 className="text-lg font-semibold tracking-tight">
         {hasWorkspace ? "Create another workspace" : "Create your workspace"}
       </h1>
-      <p className="mt-1 text-sm text-[--color-muted]">
+      <p className="mt-1 text-sm text-muted">
         A workspace holds one app&apos;s knowledge base, content, leads, and campaigns.
       </p>
 
@@ -117,31 +119,31 @@ export default async function OnboardingPage({
           name="name"
           required
           maxLength={120}
-          className="rounded-md border border-[--color-line] bg-[--color-surface] px-3 py-2 text-sm"
+          className="rounded-md border border-line bg-surface px-3 py-2 text-sm"
           placeholder="My App"
         />
         <label className="text-sm" htmlFor="slug">
-          URL name <span className="text-[--color-muted]">(optional)</span>
+          URL name <span className="text-muted">(optional)</span>
         </label>
         <input
           id="slug"
           name="slug"
           maxLength={60}
-          className="rounded-md border border-[--color-line] bg-[--color-surface] px-3 py-2 text-sm"
+          className="rounded-md border border-line bg-surface px-3 py-2 text-sm"
           placeholder="my-app"
         />
         <button
           type="submit"
-          className="rounded-md bg-[--color-accent] px-3 py-2 text-sm font-medium text-white"
+          className="rounded-md bg-accent px-3 py-2 text-sm font-medium text-white"
         >
           Create workspace
         </button>
       </form>
 
       <form action="/auth/sign-out" method="post" className="mt-6">
-        <p className="text-sm text-[--color-muted]">
+        <p className="text-sm text-muted">
           Signed in as {user.email}.{" "}
-          <button type="submit" className="font-medium text-[--color-ink] underline">
+          <button type="submit" className="font-medium text-ink underline">
             Sign out
           </button>
         </p>

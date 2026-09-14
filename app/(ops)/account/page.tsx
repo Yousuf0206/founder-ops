@@ -42,12 +42,12 @@ export default async function AccountPage({
   }
 
   const input =
-    "rounded-md border border-[--color-line] bg-[--color-surface] px-3 py-2 text-sm";
+    "rounded-md border border-line bg-surface px-3 py-2 text-sm";
 
   return (
     <div className="max-w-sm">
       <h1 className="text-xl font-semibold tracking-tight">Account</h1>
-      <p className="mt-1 text-sm text-[--color-muted]">Signed in as {session.email}</p>
+      <p className="mt-1 text-sm text-muted">Signed in as {session.email}</p>
 
       <section className="mt-8">
         <h2 className="text-sm font-medium">Change password</h2>
@@ -100,7 +100,7 @@ export default async function AccountPage({
           />
           <button
             type="submit"
-            className="rounded-md bg-[--color-accent] px-3 py-2 text-sm font-medium text-white"
+            className="rounded-md bg-accent px-3 py-2 text-sm font-medium text-white"
           >
             Update password
           </button>
@@ -109,11 +109,11 @@ export default async function AccountPage({
 
       <section className="mt-10">
         <h2 className="text-sm font-medium">Your workspaces</h2>
-        <ul className="mt-3 divide-y divide-[--color-line] rounded-lg border border-[--color-line] bg-[--color-surface] text-sm">
+        <ul className="mt-3 divide-y divide-line rounded-lg border border-line bg-surface text-sm">
           {session.memberships.map((m) => (
             <li key={m.workspaceId} className="flex items-center justify-between px-4 py-3">
               <span className="font-medium">{m.workspaceName}</span>
-              <span className="text-xs uppercase tracking-wide text-[--color-muted]">
+              <span className="text-xs uppercase tracking-wide text-muted">
                 {m.role}
               </span>
             </li>

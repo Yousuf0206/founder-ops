@@ -35,8 +35,8 @@ export default async function AcceptInvitePage({
     return (
       <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6">
         <h1 className="text-lg font-semibold">This invitation cannot be used</h1>
-        <p className="mt-2 text-sm text-[--color-muted]">{error.message}</p>
-        <p className="mt-4 text-sm text-[--color-muted]">
+        <p className="mt-2 text-sm text-muted">{error.message}</p>
+        <p className="mt-4 text-sm text-muted">
           You are signed in as {user.email}. If the invitation was sent to a different address,
           sign out and sign in with that one.
         </p>

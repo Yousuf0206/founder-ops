@@ -1,5 +1,5 @@
 const STYLES: Record<string, string> = {
-  draft: "border-[--color-line] text-[--color-muted]",
+  draft: "border-line text-muted",
   awaiting_approval: "border-amber-200 bg-amber-50 text-amber-800",
   approved: "border-emerald-200 bg-emerald-50 text-emerald-800",
   rejected: "border-red-200 bg-red-50 text-red-800",
@@ -18,7 +18,7 @@ export function StatusPill({ status }: { status: string }) {
   return (
     <span
       className={`shrink-0 rounded-full border px-2 py-0.5 text-xs ${
-        STYLES[status] ?? "border-[--color-line]"
+        STYLES[status] ?? "border-line"
       }`}
     >
       {LABELS[status] ?? status}

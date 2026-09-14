@@ -24,7 +24,7 @@ export function SettingsForm({
         <label htmlFor="daily_run_cap" className="text-sm font-medium">
           Daily AI run cap
         </label>
-        <p className="text-sm text-[--color-muted]">
+        <p className="text-sm text-muted">
           Counts runs, not tokens. Resets at UTC midnight. {used} used today.
         </p>
         <input
@@ -34,7 +34,7 @@ export function SettingsForm({
           min={0}
           max={10000}
           defaultValue={cap}
-          className="w-32 rounded-md border border-[--color-line] bg-[--color-surface] px-3 py-2 text-sm"
+          className="w-32 rounded-md border border-line bg-surface px-3 py-2 text-sm"
         />
       </div>
 
@@ -42,7 +42,7 @@ export function SettingsForm({
         <label htmlFor="notify_email" className="text-sm font-medium">
           Notification email
         </label>
-        <p className="text-sm text-[--color-muted]">
+        <p className="text-sm text-muted">
           Where high-intent lead alerts go. A team address — never a lead&rsquo;s.
         </p>
         <input
@@ -51,7 +51,7 @@ export function SettingsForm({
           type="email"
           defaultValue={notifyEmail}
           placeholder="owner@example.com"
-          className="w-full rounded-md border border-[--color-line] bg-[--color-surface] px-3 py-2 text-sm"
+          className="w-full rounded-md border border-line bg-surface px-3 py-2 text-sm"
         />
       </div>
 
@@ -61,7 +61,7 @@ export function SettingsForm({
       <div>
         <button
           type="submit"
-          className="rounded-md bg-[--color-accent] px-3 py-2 text-sm font-medium text-white"
+          className="rounded-md bg-accent px-3 py-2 text-sm font-medium text-white"
         >
           Save settings
         </button>

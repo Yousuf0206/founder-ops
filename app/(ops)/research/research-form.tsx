@@ -23,14 +23,14 @@ export function ResearchForm({ disabled }: { disabled?: string }) {
     <form action={formAction} className="mt-6 flex flex-col gap-4">
       <div className="flex flex-col gap-1.5">
         <label htmlFor="title" className="text-sm font-medium">
-          Title <span className="font-normal text-[--color-muted]">(optional)</span>
+          Title <span className="font-normal text-muted">(optional)</span>
         </label>
         <input
           id="title"
           name="title"
           maxLength={200}
           placeholder="Q3 competitor sweep"
-          className="w-full rounded-md border border-[--color-line] bg-[--color-surface] px-3 py-2 text-sm"
+          className="w-full rounded-md border border-line bg-surface px-3 py-2 text-sm"
         />
       </div>
 
@@ -38,7 +38,7 @@ export function ResearchForm({ disabled }: { disabled?: string }) {
         <label htmlFor="notes" className="text-sm font-medium">
           Notes
         </label>
-        <p className="text-sm text-[--color-muted]">
+        <p className="text-sm text-muted">
           Paste raw customer feedback, support threads, or competitor notes. Findings come back
           labelled Fact, Inference, or Hypothesis. Nothing is sent anywhere.
         </p>
@@ -47,7 +47,7 @@ export function ResearchForm({ disabled }: { disabled?: string }) {
           name="notes"
           rows={14}
           required
-          className="w-full rounded-md border border-[--color-line] bg-[--color-surface] px-3 py-2 font-mono text-sm"
+          className="w-full rounded-md border border-line bg-surface px-3 py-2 font-mono text-sm"
         />
       </div>
 
@@ -66,7 +66,7 @@ function Submit() {
     <button
       type="submit"
       disabled={pending}
-      className="rounded-md bg-[--color-accent] px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
+      className="rounded-md bg-accent px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
     >
       {pending ? "Analysing… (up to 60s)" : "Run research"}
     </button>

@@ -36,7 +36,7 @@ export default async function CampaignPage({
 
   return (
     <div className="max-w-3xl">
-      <Link href="/campaigns" className="text-sm text-[--color-muted]">
+      <Link href="/campaigns" className="text-sm text-muted">
         ← Campaigns
       </Link>
 
@@ -44,7 +44,7 @@ export default async function CampaignPage({
         <div>
           <h1 className="text-xl font-semibold tracking-tight">{campaign.goal}</h1>
           {campaign.audience && (
-            <p className="mt-1 text-sm text-[--color-muted]">{campaign.audience}</p>
+            <p className="mt-1 text-sm text-muted">{campaign.audience}</p>
           )}
         </div>
         <StatusPill status={campaign.status} />
@@ -57,11 +57,11 @@ export default async function CampaignPage({
             {payload.positioning_options.map((option, index) => (
               <li
                 key={index}
-                className="rounded-lg border border-[--color-line] bg-[--color-surface] p-3 text-sm"
+                className="rounded-lg border border-line bg-surface p-3 text-sm"
               >
                 <p className="font-medium">{option.angle}</p>
                 {option.why_it_works && (
-                  <p className="mt-1 text-[--color-muted]">{option.why_it_works}</p>
+                  <p className="mt-1 text-muted">{option.why_it_works}</p>
                 )}
               </li>
             ))}
@@ -76,12 +76,12 @@ export default async function CampaignPage({
             {payload.posts.map((post, index) => (
               <li
                 key={index}
-                className="rounded-lg border border-[--color-line] bg-[--color-surface] p-3 text-sm"
+                className="rounded-lg border border-line bg-surface p-3 text-sm"
               >
-                <p className="text-xs text-[--color-muted]">{post.platform}</p>
+                <p className="text-xs text-muted">{post.platform}</p>
                 <p className="mt-1 font-medium">{post.hook}</p>
                 <p className="mt-1 whitespace-pre-wrap">{post.body}</p>
-                {post.cta && <p className="mt-1 text-[--color-muted]">CTA: {post.cta}</p>}
+                {post.cta && <p className="mt-1 text-muted">CTA: {post.cta}</p>}
               </li>
             ))}
           </ul>
@@ -91,12 +91,12 @@ export default async function CampaignPage({
       {(payload.email_draft.subject || payload.email_draft.body) && (
         <section className="mt-6">
           <h2 className="text-sm font-medium">Email draft</h2>
-          <div className="mt-2 rounded-lg border border-[--color-line] bg-[--color-surface] p-3 text-sm">
+          <div className="mt-2 rounded-lg border border-line bg-surface p-3 text-sm">
             <p className="font-medium">{payload.email_draft.subject}</p>
             <p className="mt-2 whitespace-pre-wrap">{payload.email_draft.body}</p>
           </div>
           {/* US6 scenario 3, said plainly where a reader would worry about it. */}
-          <p className="mt-2 text-xs text-[--color-muted]">
+          <p className="mt-2 text-xs text-muted">
             A draft for you to send yourself. Approving this campaign sends no email.
           </p>
         </section>
@@ -105,18 +105,18 @@ export default async function CampaignPage({
       {payload.experiment.hypothesis && (
         <section className="mt-6">
           <h2 className="text-sm font-medium">Experiment</h2>
-          <dl className="mt-2 rounded-lg border border-[--color-line] bg-[--color-surface] p-3 text-sm">
-            <dt className="text-xs text-[--color-muted]">Hypothesis</dt>
+          <dl className="mt-2 rounded-lg border border-line bg-surface p-3 text-sm">
+            <dt className="text-xs text-muted">Hypothesis</dt>
             <dd>{payload.experiment.hypothesis}</dd>
             {payload.experiment.measure && (
               <>
-                <dt className="mt-2 text-xs text-[--color-muted]">Measure</dt>
+                <dt className="mt-2 text-xs text-muted">Measure</dt>
                 <dd>{payload.experiment.measure}</dd>
               </>
             )}
             {payload.experiment.duration && (
               <>
-                <dt className="mt-2 text-xs text-[--color-muted]">Duration</dt>
+                <dt className="mt-2 text-xs text-muted">Duration</dt>
                 <dd>{payload.experiment.duration}</dd>
               </>
             )}
@@ -127,7 +127,7 @@ export default async function CampaignPage({
       {mayApprove ? (
         <CampaignDecision campaignId={campaign.id} status={campaign.status} />
       ) : (
-        <p className="mt-8 rounded-lg border border-[--color-line] bg-[--color-surface] p-4 text-sm text-[--color-muted]">
+        <p className="mt-8 rounded-lg border border-line bg-surface p-4 text-sm text-muted">
           You do not have approval rights in this workspace.
         </p>
       )}
@@ -139,14 +139,14 @@ export default async function CampaignPage({
             {approvals.map((approval) => (
               <li
                 key={approval.id}
-                className="rounded-lg border border-[--color-line] bg-[--color-surface] p-3 text-sm"
+                className="rounded-lg border border-line bg-surface p-3 text-sm"
               >
                 <span className="font-medium">{approval.status.replace(/_/g, " ")}</span>
-                <span className="text-[--color-muted]">
+                <span className="text-muted">
                   {" · "}
                   {new Date(approval.created_at).toLocaleString()}
                 </span>
-                {approval.notes && <p className="mt-1 text-[--color-muted]">{approval.notes}</p>}
+                {approval.notes && <p className="mt-1 text-muted">{approval.notes}</p>}
               </li>
             ))}
           </ul>

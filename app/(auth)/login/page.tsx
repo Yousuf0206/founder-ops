@@ -15,7 +15,76 @@ import {
  * Sign-up is open to anyone. A new account has no workspace, so the ops layout
  * sends it to /onboarding to create one; invited users land back on their
  * /invite/<token> via `next` instead.
+ *
+ * The server actions below must not close over anything from the component
+ * body: captured values are serialized to the client, and functions cannot be.
+ * `next` travels in a hidden field and helpers live at module scope.
  */
+
+function loginUrl(next: string, mode: "signin" | "signup", error?: string): string {
+  const params = new URLSearchParams({ next });
+  if (mode === "signup") params.set("mode", "signup");
+  if (error) params.set("error", error);
+  return `/login?${params.toString()}`;
+}
+
+async function signIn(formData: FormData) {
+  "use server";
+
+  const next = safeNextPath(formData.get("next"));
+  const parsed = signInSchema.safeParse({
+    email: formData.get("email"),
+    password: formData.get("password"),
+  });
+  if (!parsed.success) redirect(loginUrl(next, "signin", firstIssue(parsed.error)));
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.auth.signInWithPassword(parsed.data);
+
+  // Do not reveal whether the email exists.
+  if (error) redirect(loginUrl(next, "signin", "Incorrect email or password."));
+
+  redirect(next);
+}
+
+async function createAccount(formData: FormData) {
+  "use server";
+
+  const next = safeNextPath(formData.get("next"));
+  const parsed = createAccountSchema.safeParse({
+    email: formData.get("email"),
+    password: formData.get("password"),
+  });
+  if (!parsed.success) redirect(loginUrl(next, "signup", firstIssue(parsed.error)));
+  const { email, password } = parsed.data;
+
+  // Created through the admin API with the email pre-confirmed, so sign-up
+  // needs no confirmation link. Tradeoff: the address is not proven owned.
+  const admin = createSupabaseAdminClient();
+  const { error: createError } = await admin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+  });
+  if (createError) {
+    redirect(
+      loginUrl(
+        next,
+        "signup",
+        /already|registered|exists/i.test(createError.message)
+          ? "An account already exists for this email. Sign in instead."
+          : createError.message,
+      ),
+    );
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+  if (signInError) redirect(loginUrl(next, "signup", signInError.message));
+
+  redirect(next);
+}
+
 export default async function LoginPage({
   searchParams,
 }: {
@@ -25,70 +94,10 @@ export default async function LoginPage({
   const next = safeNextPath(params.next);
   const signingUp = params.mode === "signup";
 
-  const back = (message: string, mode = "") =>
-    `/login?next=${encodeURIComponent(next)}${mode ? `&mode=${mode}` : ""}&error=${encodeURIComponent(message)}`;
-
-  async function signIn(formData: FormData) {
-    "use server";
-
-    const parsed = signInSchema.safeParse({
-      email: formData.get("email"),
-      password: formData.get("password"),
-    });
-    if (!parsed.success) redirect(back(firstIssue(parsed.error)));
-
-    const supabase = await createSupabaseServerClient();
-    const { error } = await supabase.auth.signInWithPassword(parsed.data);
-
-    // Do not reveal whether the email exists.
-    if (error) redirect(back("Incorrect email or password."));
-
-    redirect(next);
-  }
-
-  async function createAccount(formData: FormData) {
-    "use server";
-
-    const parsed = createAccountSchema.safeParse({
-      email: formData.get("email"),
-      password: formData.get("password"),
-    });
-    if (!parsed.success) redirect(back(firstIssue(parsed.error), "signup"));
-    const { email, password } = parsed.data;
-
-    // Created through the admin API with the email pre-confirmed, so sign-up
-    // needs no confirmation link. Tradeoff: the address is not proven owned.
-    const admin = createSupabaseAdminClient();
-    const { error: createError } = await admin.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-    });
-    if (createError) {
-      redirect(
-        back(
-          /already|registered|exists/i.test(createError.message)
-            ? "An account already exists for this email. Sign in instead."
-            : createError.message,
-          "signup",
-        ),
-      );
-    }
-
-    const supabase = await createSupabaseServerClient();
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-    if (signInError) redirect(back(signInError.message, "signup"));
-
-    redirect(next);
-  }
-
-  const switchHref = (mode: string) =>
-    `/login?next=${encodeURIComponent(next)}${mode ? `&mode=${mode}` : ""}`;
-
   return (
     <div className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-6">
       <h1 className="text-lg font-semibold tracking-tight">Founder Ops</h1>
-      <p className="mt-1 text-sm text-[--color-muted]">
+      <p className="mt-1 text-sm text-muted">
         {signingUp ? "Create your account to get started." : "Sign in to your workspace."}
       </p>
 
@@ -99,6 +108,7 @@ export default async function LoginPage({
       )}
 
       <form action={signingUp ? createAccount : signIn} className="mt-6 flex flex-col gap-3">
+        <input type="hidden" name="next" value={next} />
         <label className="text-sm" htmlFor="email">
           Email
         </label>
@@ -108,7 +118,7 @@ export default async function LoginPage({
           type="email"
           required
           autoComplete="email"
-          className="rounded-md border border-[--color-line] bg-[--color-surface] px-3 py-2 text-sm"
+          className="rounded-md border border-line bg-surface px-3 py-2 text-sm"
           placeholder="you@example.com"
         />
         <label className="text-sm" htmlFor="password">
@@ -122,26 +132,29 @@ export default async function LoginPage({
           minLength={signingUp ? 8 : undefined}
           maxLength={72}
           autoComplete={signingUp ? "new-password" : "current-password"}
-          className="rounded-md border border-[--color-line] bg-[--color-surface] px-3 py-2 text-sm"
+          className="rounded-md border border-line bg-surface px-3 py-2 text-sm"
         />
         {signingUp ? (
-          <p className="text-xs text-[--color-muted]">At least 8 characters.</p>
+          <p className="text-xs text-muted">At least 8 characters.</p>
         ) : (
-          <a href="/forgot-password" className="self-end text-xs text-[--color-muted] underline">
+          <a href="/forgot-password" className="self-end text-xs text-muted underline">
             Forgot password?
           </a>
         )}
         <button
           type="submit"
-          className="rounded-md bg-[--color-accent] px-3 py-2 text-sm font-medium text-white"
+          className="rounded-md bg-accent px-3 py-2 text-sm font-medium text-white"
         >
           {signingUp ? "Create account" : "Sign in"}
         </button>
       </form>
 
-      <p className="mt-6 text-sm text-[--color-muted]">
+      <p className="mt-6 text-sm text-muted">
         {signingUp ? "Already have an account? " : "New to Founder Ops? "}
-        <a href={switchHref(signingUp ? "" : "signup")} className="font-medium text-[--color-ink] underline">
+        <a
+          href={loginUrl(next, signingUp ? "signin" : "signup")}
+          className="font-medium text-ink underline"
+        >
           {signingUp ? "Sign in" : "Create an account"}
         </a>
       </p>

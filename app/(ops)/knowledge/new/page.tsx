@@ -12,7 +12,7 @@ export default async function NewDocPage() {
 
   return (
     <div className="max-w-2xl">
-      <Link href="/knowledge" className="text-sm text-[--color-muted]">
+      <Link href="/knowledge" className="text-sm text-muted">
         ← Knowledge
       </Link>
       <h1 className="mt-2 text-xl font-semibold tracking-tight">New document</h1>
