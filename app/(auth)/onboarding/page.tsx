@@ -31,10 +31,12 @@ export default async function OnboardingPage({
 
   if (!user) redirect(`/login?next=${encodeURIComponent("/onboarding")}`);
 
-  const back = (message: string) => `/onboarding?error=${encodeURIComponent(message)}`;
-
   async function createWorkspace(formData: FormData) {
     "use server";
+
+    // Defined inside the action: a server action cannot capture functions from
+    // the component body, because captured values are serialized.
+    const back = (message: string) => `/onboarding?error=${encodeURIComponent(message)}`;
 
     const server = await createSupabaseServerClient();
     const {
