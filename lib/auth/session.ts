@@ -1,6 +1,22 @@
 import "server-only";
 
+import { cookies } from "next/headers";
+
 import { createSupabaseServerClient } from "@/lib/db/server";
+
+/**
+ * Remembers which workspace a user last switched to. Only a preference: the
+ * value is honored only if it matches a membership read through RLS below.
+ */
+export const ACTIVE_WORKSPACE_COOKIE = "founder-ops-workspace";
+
+export const activeWorkspaceCookieOptions = {
+  httpOnly: true,
+  sameSite: "lax" as const,
+  secure: process.env.NODE_ENV === "production",
+  path: "/",
+  maxAge: 60 * 60 * 24 * 365,
+};
 
 export type MembershipRole = "owner" | "editor" | "viewer";
 
@@ -59,7 +75,9 @@ export async function getOpsSession(): Promise<OpsSession | null> {
       ];
     });
 
-  const activeWorkspace = memberships[0];
+  const preferred = (await cookies()).get(ACTIVE_WORKSPACE_COOKIE)?.value;
+  const activeWorkspace =
+    memberships.find((m) => m.workspaceId === preferred) ?? memberships[0];
   if (!activeWorkspace) return null;
 
   return {

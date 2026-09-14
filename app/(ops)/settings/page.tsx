@@ -2,8 +2,11 @@ import { isOwner } from "@/lib/auth/session";
 import { requireSession } from "@/lib/knowledge/repo";
 import { capStatus } from "@/lib/ai/run";
 import { createSupabaseServerClient } from "@/lib/db/server";
+import { requestOrigin } from "@/lib/http/origin";
 import { SettingsForm } from "./settings-form";
 import { setApprovalRightAction } from "./actions";
+import { IngestSecretForm } from "./ingest-secret-form";
+import { Invitations } from "./invitations";
 
 export default async function SettingsPage() {
   const session = await requireSession();
@@ -11,7 +14,8 @@ export default async function SettingsPage() {
   const owner = isOwner(session.activeWorkspace.role);
   const supabase = await createSupabaseServerClient();
 
-  const [cap, { data: workspace }, { data: members }] = await Promise.all([
+  const [origin, cap, { data: workspace }, { data: members }] = await Promise.all([
+    requestOrigin(),
     capStatus(workspaceId),
     supabase
       .from("workspaces")
@@ -95,16 +99,22 @@ export default async function SettingsPage() {
         </ul>
       </section>
 
+      {owner && <Invitations workspaceId={workspaceId} />}
+
       <section className="mt-10">
         <h2 className="text-sm font-medium">Lead ingest</h2>
         <p className="mt-1 text-sm text-[--color-muted]">
+          Send leads from your app with a POST to{" "}
+          <code className="text-xs">{origin}/api/ops/leads/ingest</code> and the headers{" "}
+          <code className="text-xs">x-founder-ops-workspace: {workspace?.slug ?? "<slug>"}</code>{" "}
+          and <code className="text-xs">x-founder-ops-secret</code>.
+        </p>
+        <p className="mt-2 text-sm text-[--color-muted]">
           {workspace?.ingest_secret_hash
             ? "An ingest secret is set. It is stored hashed and cannot be shown again."
             : "No ingest secret set — the lead webhook will reject every request."}
         </p>
-        <pre className="mt-2 overflow-x-auto rounded-lg border border-[--color-line] bg-[--color-surface] p-3 text-xs">
-          {`npm run set:ingest-secret -- --slug ${workspace?.slug ?? "<slug>"} --notify <team-email>`}
-        </pre>
+        {owner && <IngestSecretForm hasSecret={Boolean(workspace?.ingest_secret_hash)} />}
       </section>
     </div>
   );

@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Founder Ops",
-  description: "Internal operations workspace — team only.",
+  description: "Growth operations for your apps — research, content, leads, and campaigns.",
   robots: { index: false, follow: false },
 };
 

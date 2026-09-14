@@ -14,7 +14,8 @@
     "seed:claims": "tsx supabase/seed/seed-claims.ts",
     "check:no-publish": "node scripts/check-no-publish.mjs",
     "check": "npm run check:public-env && npm run check:no-publish && npm run typecheck && npm run test",
-    "set:ingest-secret": "tsx supabase/seed/set-ingest-secret.ts"
+    "set:ingest-secret": "tsx supabase/seed/set-ingest-secret.ts",
+    "set:password": "tsx supabase/seed/set-password.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",
