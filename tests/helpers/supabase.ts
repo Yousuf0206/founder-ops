@@ -1,7 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { config } from "dotenv";
 
-config({ path: ".env.local" });
+config({ path: ".env" });
 
 /**
  * Test harness against a LOCAL Supabase instance (T0.12), or an explicitly
@@ -11,7 +11,7 @@ config({ path: ".env.local" });
  * against TEST_SUPABASE_URL when it is missing, when it is local but the app's
  * own project (a copy-paste mistake), or when it points remote without the
  * explicit TEST_SUPABASE_ALLOW_REMOTE=true opt-in — so a misconfigured
- * .env.local cannot aim them at production by accident.
+ * .env cannot aim them at production by accident.
  */
 
 export function testEnv() {
