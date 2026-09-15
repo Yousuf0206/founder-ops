@@ -13,12 +13,12 @@ import { config } from "dotenv";
 
 import { hashSecret } from "../../lib/leads/ingest";
 
-config({ path: ".env.local" });
+config({ path: ".env" });
 
 function requireEnv(name: string): string {
   const value = process.env[name];
   if (!value) {
-    console.error(`Missing ${name}. Copy env.example to .env.local and fill it in.`);
+    console.error(`Missing ${name}. Copy env.example to .env and fill it in.`);
     process.exit(1);
   }
   return value;

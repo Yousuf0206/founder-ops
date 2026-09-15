@@ -54,7 +54,7 @@ phase is therefore reviewed, not proven.
 To close it:
 
 1. Create a Supabase project (or `supabase start` locally)
-2. `cp env.example .env.local` and fill in the keys
+2. `cp env.example .env` and fill in the keys
 3. Apply `supabase/migrations/0001_foundation.sql`
 4. Sign in once at `/login` to create your profile row
 5. `npm run seed:workspace -- --name "Lumo Learn" --slug lumo --owner <your-email>`
