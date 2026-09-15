@@ -1,4 +1,4 @@
--- Founder Ops — Phase 0 foundation
+-- Lumo-Ops — Phase 0 foundation
 -- Tasks: T0.3 (tables), T0.4 (RLS policies), T0.10 (invitations / join path)
 --
 -- Constitution VI: workspace_id from the first migration.

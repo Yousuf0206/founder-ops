@@ -4,8 +4,20 @@ import { notFound } from "next/navigation";
 import { requireSession } from "@/lib/knowledge/repo";
 import { callerCanApprove, getDraft, listApprovalsFor } from "@/lib/approvals/repo";
 import type { ContentPayload } from "@/lib/ai/content";
+import { platformLabel } from "@/lib/content/platforms";
+import { hasLiveConnector } from "@/lib/connectors/registry";
+import { createSupabaseServerClient } from "@/lib/db/server";
 import { StatusPill } from "../../status-pill";
 import { DecisionPanel } from "./decision-panel";
+import { PublishPanel } from "./publish-panel";
+
+type JobRow = {
+  id: string;
+  status: string;
+  scheduled_for: string;
+  permalink: string | null;
+  platform_error: string | null;
+};
 
 export default async function DraftPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -15,9 +27,26 @@ export default async function DraftPage({ params }: { params: Promise<{ id: stri
   const draft = await getDraft(workspaceId, id);
   if (!draft) notFound();
 
-  const [approvals, mayApprove] = await Promise.all([
+  const supabase = await createSupabaseServerClient();
+  const live = hasLiveConnector(draft.platform);
+
+  const [approvals, mayApprove, { data: accounts }, { data: jobs }, { data: workspace }] = await Promise.all([
     listApprovalsFor(workspaceId, id),
     callerCanApprove(workspaceId),
+    supabase
+      .from("connected_accounts")
+      .select("id, display_name")
+      .eq("workspace_id", workspaceId)
+      .eq("platform", draft.platform.trim().toLowerCase())
+      .eq("status", "active")
+      .is("revoked_at", null),
+    supabase
+      .from("publish_jobs")
+      .select("id, status, scheduled_for, permalink, platform_error")
+      .eq("workspace_id", workspaceId)
+      .eq("draft_id", id)
+      .order("created_at", { ascending: false }),
+    supabase.from("workspaces").select("publish_mode").eq("id", workspaceId).maybeSingle(),
   ]);
 
   return (
@@ -30,13 +59,21 @@ export default async function DraftPage({ params }: { params: Promise<{ id: stri
         <div>
           <h1 className="text-xl font-semibold tracking-tight">{draft.topic}</h1>
           <p className="mt-1 text-sm text-muted">
-            {draft.platform}
+            {platformLabel(draft.platform)}
             {draft.audience && ` · ${draft.audience}`}
             {draft.tone && ` · ${draft.tone}`}
           </p>
         </div>
         <StatusPill status={draft.status} />
       </div>
+
+      {/* 002 T1.10 / US3 AC5: drafting works everywhere; publishing needs a live connector. */}
+      {!live && (
+        <p className="mt-4 rounded-lg border border-line bg-surface p-3 text-sm text-muted">
+          Draft only — there is no publish connector for {platformLabel(draft.platform)} yet. Once
+          approved, copy it and post it yourself.
+        </p>
+      )}
 
       <Payload payload={draft.payload_json} />
 
@@ -58,6 +95,36 @@ export default async function DraftPage({ params }: { params: Promise<{ id: stri
         <p className="mt-8 rounded-lg border border-line bg-surface p-4 text-sm text-muted">
           You do not have approval rights in this workspace.
         </p>
+      )}
+
+      {mayApprove && live && draft.status === "approved" && (
+        <PublishPanel
+          draftId={draft.id}
+          accounts={(accounts ?? []) as { id: string; display_name: string }[]}
+          mode={workspace?.publish_mode ?? "approve_then_publish"}
+        />
+      )}
+
+      {(jobs ?? []).length > 0 && (
+        <section className="mt-8">
+          <h2 className="text-sm font-medium">Publish history</h2>
+          <ul className="mt-2 flex flex-col gap-2">
+            {((jobs ?? []) as JobRow[]).map((job) => (
+              <li key={job.id} className="rounded-lg border border-line bg-surface p-3 text-sm">
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-muted">{new Date(job.scheduled_for).toLocaleString()}</span>
+                  <StatusPill status={job.status} />
+                </div>
+                {job.permalink && (
+                  <a href={job.permalink} target="_blank" rel="noreferrer" className="mt-1 block text-xs underline">
+                    View the post
+                  </a>
+                )}
+                {job.platform_error && <p className="mt-1 text-xs text-red-700">{job.platform_error}</p>}
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       {approvals.length > 0 && (

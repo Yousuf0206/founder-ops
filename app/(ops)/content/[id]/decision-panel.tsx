@@ -7,11 +7,11 @@ import { decideAction, type DecisionState } from "../../approvals/actions";
 import type { ContentPayload } from "@/lib/ai/content";
 
 /**
- * The human gate (FR-A-002). Three decisions plus the manual publish mark.
+ * The human gate (FR-A-002): approve, edit and approve, or reject.
  *
- * "Mark as published" is styled as a record of something the person already did
- * elsewhere, not as an action this app performs — Constitution I lives or dies
- * on that distinction being obvious in the UI, not just true in the code.
+ * v1's "I published this manually" mark is gone (002 T2.13). Publishing is a
+ * real action now, taken from the publish panel, and `published` is set only
+ * by a publish job that holds a platform receipt.
  */
 export function DecisionPanel({
   draftId,
@@ -30,27 +30,12 @@ export function DecisionPanel({
   if (!pendingDecision) {
     return (
       <div className="mt-8 rounded-lg border border-line bg-surface p-4">
-        {status === "approved" ? (
-          <form action={formAction} className="flex flex-col gap-3">
-            <input type="hidden" name="draft_id" value={draftId} />
-            <input type="hidden" name="decision" value="mark_published" />
-            <p className="text-sm">
-              Approved. When you have published this yourself — on the platform, by hand —
-              record that here.
-            </p>
-            <div>
-              <SubmitButton className="border border-line">
-                I published this manually
-              </SubmitButton>
-            </div>
-            {state.done && <p className="text-sm text-emerald-700">{state.done}</p>}
-            {state.error && <p className="text-sm text-red-600">{state.error}</p>}
-          </form>
-        ) : (
-          <p className="text-sm text-muted">
-            This draft has been decided. Its history is below.
-          </p>
-        )}
+        <p className="text-sm text-muted">
+          {status === "approved"
+            ? "Approved. Publish it below to a connected account, or copy it if this platform has no connector yet."
+            : "This draft has been decided. Its history is below."}
+        </p>
+        {state.done && <p className="mt-2 text-sm text-emerald-700">{state.done}</p>}
       </div>
     );
   }

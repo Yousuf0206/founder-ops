@@ -1,12 +1,20 @@
 ---
-description: "Task list for Founder Ops Core implementation"
+description: "Task list for Lumo-Ops Core implementation"
 ---
 
-# Tasks: Founder Ops Core
+# Tasks: Lumo-Ops Core
 
-**Input**: `specs/001-founder-ops-core/spec.md`, `specs/001-founder-ops-core/plan.md`
+> **CLOSED — superseded by Constitution v2.0.0 (2026-09-15).** This document was written
+> and built under v1.0.0, whose Principle I was "Draft, Never Auto-Publish". v2.0.0 makes
+> publishing in scope under human-set modes, so parts of this document are now wrong by
+> design. Do not implement against it. See
+> [v2-conformance-audit.md](./v2-conformance-audit.md) for the conflict list, what v2
+> inherits, and what is newly missing.
+
+
+**Input**: `specs/001-lumo-ops-core/spec.md`, `specs/001-lumo-ops-core/plan.md`
 **Prerequisites**: plan.md (required), spec.md (required for user stories)
-**Governed by**: `.specify/memory/constitution.md` (Founder Ops Constitution v1.0.0)
+**Governed by**: `.specify/memory/constitution.md` (Lumo-Ops Constitution v1.0.0)
 
 ## Format: `[ID] [P?] [Story] Description`
 

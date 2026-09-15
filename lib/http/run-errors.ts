@@ -7,6 +7,26 @@ import { MissingClaimSetError } from "@/lib/prompts/assemble";
 import { CapReachedError, ProviderNotConfiguredError } from "@/lib/ai/run";
 import { ProviderError } from "@/lib/ai/provider";
 import { UnparseableOutputError } from "@/lib/ai/research";
+import { FetchFailedError, RobotsDisallowedError, UnsafeUrlError } from "@/lib/analyze/fetch";
+import { NoEvidencedIdeasError } from "@/lib/strategy/run";
+
+/**
+ * 422 — the request was understood but refused on its content: an unsafe or
+ * robots-disallowed URL, or research too thin to support any evidenced idea.
+ */
+function refusal(error: unknown): NextResponse | null {
+  if (
+    error instanceof UnsafeUrlError ||
+    error instanceof RobotsDisallowedError ||
+    error instanceof NoEvidencedIdeasError
+  ) {
+    return NextResponse.json({ error: error.message }, { status: 422 });
+  }
+  if (error instanceof FetchFailedError) {
+    return NextResponse.json({ error: error.message }, { status: 502 });
+  }
+  return null;
+}
 
 /**
  * Maps generation failures to HTTP responses.
@@ -23,6 +43,9 @@ export function toRunResponse(error: unknown): NextResponse {
   if (error instanceof AuthError) {
     return NextResponse.json({ error: error.message }, { status: error.status });
   }
+
+  const refused = refusal(error);
+  if (refused) return refused;
 
   if (error instanceof MissingClaimSetError) {
     return NextResponse.json({ error: error.message }, { status: 409 });

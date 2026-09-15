@@ -3,6 +3,8 @@ import "server-only";
 import { z } from "zod";
 
 import type { OpsSession } from "@/lib/auth/session";
+import { AuthError } from "@/lib/knowledge/repo";
+import { PLATFORM_NORMS, SOCIAL_PLATFORMS } from "@/lib/content/platforms";
 import { createSupabaseServerClient } from "@/lib/db/server";
 import { runGeneration, writeAudit } from "@/lib/ai/run";
 import { findForbiddenClaims } from "@/lib/prompts/assemble";
@@ -73,6 +75,141 @@ export class UnparseableContentError extends Error {
 function extractJson(text: string): string {
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/);
   return (fenced?.[1] ?? text).trim();
+}
+
+// --- multi-platform package (002 T1.7, FR-M-001..003) ----------------------
+
+const PACKAGE_ROLE = `You are a content writer for an internal growth tool.
+You draft social and marketing content that a human will review before anything is used.
+
+Write ONE asset for EACH requested platform. Each must be native to its platform — its own
+length, tone, and structure, following the platform brief — not the same text reformatted.
+
+You may only assert product facts that appear in the approved claims or knowledge base
+above. If you need a fact you do not have, write "[unknown: <what you need>]" instead of
+guessing.
+
+Return ONLY valid JSON with one key per requested platform, using exactly the platform keys given:
+{
+  "drafts": {
+    "<platform>": {
+      "hook": "...", "script": "...", "captions": ["..."], "titles": ["..."],
+      "hashtags": ["#..."], "cta": "...", "visual_plan": "..."
+    }
+  }
+}`;
+
+export const contentPackageRequestSchema = z.object({
+  topic: z.string().trim().min(1, "Topic is required.").max(300),
+  platforms: z
+    .array(z.enum(SOCIAL_PLATFORMS))
+    .min(1, "Choose at least one platform.")
+    .transform((platforms) => [...new Set(platforms)]),
+  audience: z.string().trim().max(300).default(""),
+  tone: z.string().trim().max(120).default(""),
+  strategy_idea_id: z.string().uuid().optional(),
+});
+
+export type ContentPackageRequest = z.infer<typeof contentPackageRequestSchema>;
+
+const packageOutputSchema = z.object({ drafts: z.record(contentPayloadSchema) });
+
+export async function runContentPackage(
+  session: OpsSession,
+  input: ContentPackageRequest,
+): Promise<{ draftIds: string[] }> {
+  const workspaceId = session.activeWorkspace.workspaceId;
+  const supabase = await createSupabaseServerClient();
+
+  let idea: { id: string; title: string; angle: string } | null = null;
+  if (input.strategy_idea_id) {
+    const { data, error } = await supabase
+      .from("strategy_ideas")
+      .select("id, title, angle")
+      .eq("workspace_id", workspaceId)
+      .eq("id", input.strategy_idea_id)
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) throw new AuthError("That campaign idea was not found in this workspace.", 404);
+    idea = data;
+  }
+
+  const brief = [
+    `Topic: ${input.topic}`,
+    idea && `Campaign idea: ${idea.title}${idea.angle ? ` — ${idea.angle}` : ""}`,
+    input.audience && `Audience: ${input.audience}`,
+    input.tone && `Tone: ${input.tone}`,
+    "",
+    "Platforms and their briefs:",
+    ...input.platforms.map((platform) => `- ${platform}: ${PLATFORM_NORMS[platform]}`),
+  ]
+    .filter((line): line is string => typeof line === "string")
+    .join("\n");
+
+  // One run for the whole package: six platforms cost one cap slot, not six.
+  const { runId, claimSet, result } = await runGeneration({
+    session,
+    action: "content.package",
+    role: PACKAGE_ROLE,
+    userPrompt: brief,
+    jsonMode: true,
+  });
+
+  let drafts: Record<string, ContentPayload>;
+  try {
+    drafts = packageOutputSchema.parse(JSON.parse(extractJson(result.text))).drafts;
+  } catch {
+    throw new UnparseableContentError();
+  }
+  if (input.platforms.some((platform) => !drafts[platform])) throw new UnparseableContentError();
+
+  // T1.8: every platform's asset is scanned; one violation blocks the package.
+  const violations = findForbiddenClaims(
+    JSON.stringify(input.platforms.map((platform) => drafts[platform])),
+    claimSet,
+  );
+  if (violations.length > 0) {
+    await writeAudit(workspaceId, "content.forbidden_claim_blocked", "ai_run_log", runId, {
+      claims: violations,
+      platforms: input.platforms,
+    });
+    throw new ForbiddenClaimError(violations);
+  }
+
+  const { data, error } = await supabase
+    .from("content_drafts")
+    .insert(
+      input.platforms.map((platform) => ({
+        workspace_id: workspaceId,
+        topic: input.topic,
+        platform,
+        audience: input.audience,
+        tone: input.tone,
+        payload_json: drafts[platform],
+        status: "awaiting_approval",
+        run_id: runId,
+        created_by: session.userId,
+        strategy_idea_id: idea?.id ?? null,
+      })),
+    )
+    .select("id");
+
+  if (error) throw error;
+
+  if (idea) {
+    await supabase
+      .from("strategy_ideas")
+      .update({ status: "selected" })
+      .eq("workspace_id", workspaceId)
+      .eq("id", idea.id);
+  }
+
+  await writeAudit(workspaceId, "content.package_drafted", "ai_run_log", runId, {
+    platforms: input.platforms,
+    strategy_idea_id: idea?.id ?? null,
+  });
+
+  return { draftIds: (data ?? []).map((row) => row.id as string) };
 }
 
 export async function runContent(

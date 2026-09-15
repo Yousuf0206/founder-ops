@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   assembleSystemPrompt,
+  EmptyApprovedClaimsError,
   findForbiddenClaims,
   MissingClaimSetError,
   UNKNOWN_INSTRUCTION,
@@ -64,17 +65,26 @@ describe("assembleSystemPrompt", () => {
     );
   });
 
-  it("forbids asserting any product fact when approved claims are empty", () => {
-    const prompt = assembleSystemPrompt("Role", {
-      claimSet: { ...claimSet, approved_claims: [] },
-    });
-    expect(prompt).toMatch(/may not assert ANY product fact/i);
+  it("refuses when approved claims are empty (decisions §7)", () => {
+    expect(() =>
+      assembleSystemPrompt("Role", { claimSet: { ...claimSet, approved_claims: [] } }),
+    ).toThrow(EmptyApprovedClaimsError);
   });
 
-  it("builds with an empty claim set object, since empty is not missing", () => {
+  it("treats whitespace-only approved claims as empty", () => {
+    expect(() =>
+      assembleSystemPrompt("Role", { claimSet: { ...claimSet, approved_claims: ["", "  "] } }),
+    ).toThrow(EmptyApprovedClaimsError);
+  });
+
+  it("reports empty approved claims as a claim-set refusal, so existing handlers map it", () => {
+    expect(new EmptyApprovedClaimsError()).toBeInstanceOf(MissingClaimSetError);
+  });
+
+  it("builds with no forbidden claims and no brand voice, since those may be empty", () => {
     expect(() =>
       assembleSystemPrompt("Role", {
-        claimSet: { ...claimSet, approved_claims: [], forbidden_claims: [], brand_voice: "" },
+        claimSet: { ...claimSet, forbidden_claims: [], brand_voice: "" },
       }),
     ).not.toThrow();
   });

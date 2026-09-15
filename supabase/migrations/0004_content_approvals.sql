@@ -1,4 +1,4 @@
--- Founder Ops — Phase 3 content drafts and approvals
+-- Lumo-Ops — Phase 3 content drafts and approvals
 -- Tasks: T3.1 (tables + RLS), T3.7 (audit on every decision), T3.8 (approval authority),
 --        T3.9 (edit-and-approve keeps both payloads)
 --

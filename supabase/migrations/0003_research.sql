@@ -1,4 +1,4 @@
--- Founder Ops — Phase 2 research, AI run logging, audit, and cost caps
+-- Lumo-Ops — Phase 2 research, AI run logging, audit, and cost caps
 -- Tasks: T2.1 (tables + RLS), T2.7 (cap stored as data), T2.8 (transactional cap)
 --
 -- Constitution VII: every AI run and approval is audited.

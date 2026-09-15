@@ -25,7 +25,7 @@ export default async function LeadsPage() {
     <div>
       <h1 className="text-xl font-semibold tracking-tight">Leads</h1>
       <p className="mt-1 text-sm text-muted">
-        Inbound only. Founder Ops never contacts a lead — high-intent arrivals notify the
+        Inbound only. Lumo-Ops never contacts a lead — high-intent arrivals notify the
         workspace owner instead.
       </p>
 

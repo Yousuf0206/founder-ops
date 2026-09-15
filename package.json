@@ -1,5 +1,5 @@
 {
-  "name": "founder-ops",
+  "name": "lumo-ops",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -12,8 +12,8 @@
     "check:public-env": "node scripts/check-public-env.mjs",
     "seed:workspace": "tsx supabase/seed/seed-workspace.ts",
     "seed:claims": "tsx supabase/seed/seed-claims.ts",
-    "check:no-publish": "node scripts/check-no-publish.mjs",
-    "check": "npm run check:public-env && npm run check:no-publish && npm run typecheck && npm run test",
+    "check:publish-guards": "node scripts/check-publish-guards.mjs",
+    "check": "npm run check:public-env && npm run check:publish-guards && npm run typecheck && npm run test",
     "set:ingest-secret": "tsx supabase/seed/set-ingest-secret.ts",
     "set:password": "tsx supabase/seed/set-password.ts"
   },

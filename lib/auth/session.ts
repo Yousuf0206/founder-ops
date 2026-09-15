@@ -8,7 +8,7 @@ import { createSupabaseServerClient } from "@/lib/db/server";
  * Remembers which workspace a user last switched to. Only a preference: the
  * value is honored only if it matches a membership read through RLS below.
  */
-export const ACTIVE_WORKSPACE_COOKIE = "founder-ops-workspace";
+export const ACTIVE_WORKSPACE_COOKIE = "lumo-ops-workspace";
 
 export const activeWorkspaceCookieOptions = {
   httpOnly: true,

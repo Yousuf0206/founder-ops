@@ -88,7 +88,36 @@ describe("workspaceCreateSchema", () => {
     expect(workspaceCreateSchema.parse({ name: " My App ", slug: "" })).toEqual({
       name: "My App",
       slug: "my-app",
+      niche: "",
+      goals: "",
+      tone: "",
+      primary_url: "",
     });
+  });
+
+  it("captures niche, goals, tone, and a primary URL (002 FR-O-001)", () => {
+    const parsed = workspaceCreateSchema.parse({
+      name: "Lumo",
+      niche: " exam prep ",
+      goals: "More trial sign-ups",
+      tone: "Warm",
+      primary_url: " https://lumo.example ",
+    });
+    expect(parsed).toMatchObject({
+      niche: "exam prep",
+      goals: "More trial sign-ups",
+      tone: "Warm",
+      primary_url: "https://lumo.example",
+    });
+  });
+
+  it("rejects a primary URL that is not http or https", () => {
+    expect(
+      workspaceCreateSchema.safeParse({ name: "Lumo", primary_url: "javascript:alert(1)" }).success,
+    ).toBe(false);
+    expect(workspaceCreateSchema.safeParse({ name: "Lumo", primary_url: "lumo.example" }).success).toBe(
+      false,
+    );
   });
 
   it("normalizes a provided slug", () => {

@@ -1,6 +1,6 @@
 # Workspace starter kit
 
-A worked example for filling in a new Founder Ops workspace on day one.
+A worked example for filling in a new Lumo-Ops workspace on day one.
 
 Copy the blocks below into the app, replacing the Lumo Learn specifics with your own.
 The example is complete rather than illustrative — a workspace filled in to roughly this

@@ -111,15 +111,3 @@ export async function decideOnDraft(input: {
   });
   if (error) throw error;
 }
-
-/**
- * Marks an approved draft as published.
- *
- * A record that a human published it somewhere else. The system publishes
- * nothing (Constitution I, FR-A-003).
- */
-export async function markPublished(draftId: string): Promise<void> {
-  const supabase = await createSupabaseServerClient();
-  const { error } = await supabase.rpc("mark_draft_published", { draft_id: draftId });
-  if (error) throw error;
-}

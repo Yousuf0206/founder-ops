@@ -1,4 +1,4 @@
--- Founder Ops — Phase 1 knowledge base
+-- Lumo-Ops — Phase 1 knowledge base
 -- Tasks: T1.1 (tables + RLS), T1.7 (role gate: viewers read, editors/owners write)
 --
 -- Constitution II: one knowledge base per workspace is the only source of

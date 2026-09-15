@@ -4,7 +4,7 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 
 import { createSupabaseAdminClient } from "@/lib/db/server";
-import { assembleSystemPrompt } from "@/lib/prompts/assemble";
+import { assembleSystemPrompt, hasApprovedClaims } from "@/lib/prompts/assemble";
 import { generate, isProviderConfigured } from "@/lib/ai/provider";
 import { notifyTeamMember, isEmailConfigured } from "@/lib/email/notify";
 
@@ -159,13 +159,23 @@ export async function ingestLead(
 
   const classified = await classifyLead(workspace.id, lead.id, payload);
 
+  // Decisions §7: high intent is a score of 70 or more.
+  const highIntent =
+    classified !== null &&
+    (Math.round(classified.score) >= HIGH_INTENT_THRESHOLD || classified.intent === "high");
+
+  // 002 US9 AC4: every high-intent lead gets a "contact manually" task, whether
+  // or not email is configured. The task is for the team; nothing goes to the lead.
+  if (highIntent) {
+    await admin.from("lead_tasks").insert({
+      workspace_id: workspace.id,
+      lead_id: lead.id,
+      note: `Contact manually — high intent (score ${Math.round(classified!.score)}/100). No message has been sent.`,
+    });
+  }
+
   let notified = false;
-  if (
-    classified &&
-    classified.intent === "high" &&
-    workspace.notify_email &&
-    isEmailConfigured()
-  ) {
+  if (highIntent && workspace.notify_email && isEmailConfigured()) {
     await notifyTeamMember({
       // The workspace's own address — never payload.email.
       to: workspace.notify_email,
@@ -183,7 +193,7 @@ export async function ingestLead(
         "Message:",
         payload.message || "(empty)",
         "",
-        "No reply has been sent. Founder Ops does not contact leads.",
+        "No reply has been sent. Lumo-Ops does not contact leads.",
       ].join("\n"),
     });
 
@@ -222,8 +232,9 @@ async function classifyLead(
     .eq("workspace_id", workspaceId)
     .maybeSingle();
 
-  // Constitution III applies here too: no claim set, no generation.
-  if (!claimSet) return null;
+  // Constitution II applies here too: no claim set, or no approved claims
+  // (decisions §7), no generation. Checked before a cap slot is reserved.
+  if (!claimSet || !hasApprovedClaims(claimSet as never)) return null;
 
   const { data: docs } = await admin
     .from("knowledge_docs")

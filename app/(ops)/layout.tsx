@@ -14,15 +14,19 @@ import { switchWorkspaceAction } from "./workspace-actions";
  *
  * This is the outer of two gates. RLS underneath is the one that actually
  * protects the rows; this exists so the UI routes clearly rather than showing
- * an empty shell. (Constitution V)
+ * an empty shell. (Constitution VII)
  */
 
 const NAV = [
   { href: "/", label: "Home" },
   { href: "/knowledge", label: "Knowledge" },
+  { href: "/analyze", label: "Analyze" },
   { href: "/research", label: "Research" },
+  { href: "/strategy", label: "Strategy" },
   { href: "/content", label: "Content" },
   { href: "/approvals", label: "Approvals" },
+  { href: "/publish", label: "Publish" },
+  { href: "/insights", label: "Insights" },
   { href: "/campaigns", label: "Campaigns" },
   { href: "/leads", label: "Leads" },
   { href: "/audit", label: "Audit" },
@@ -57,7 +61,7 @@ export default async function OpsLayout({
     <div className="mx-auto flex min-h-screen max-w-6xl flex-col px-6">
       <header className="flex items-center justify-between border-b border-line py-4">
         <div className="flex items-baseline gap-3">
-          <span className="text-sm font-semibold tracking-tight">Founder Ops</span>
+          <span className="text-sm font-semibold tracking-tight">Lumo-Ops</span>
           <span className="text-sm text-muted">{activeWorkspace.workspaceName}</span>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-3 text-sm text-muted">
@@ -119,9 +123,9 @@ export default async function OpsLayout({
       </div>
 
       <footer className="border-t border-line py-4 text-xs text-muted">
-        Drafts only. Nothing here publishes or contacts anyone automatically.
+        Publishes only to accounts this workspace connected, under its publish mode, after the
+        claim check and daily cap. Leads are never contacted automatically.
       </footer>
     </div>
   );
 }
-

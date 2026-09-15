@@ -1,4 +1,4 @@
--- Founder Ops — Phase 5 campaigns
+-- Lumo-Ops — Phase 5 campaigns
 -- Tasks: T5.1 (campaigns through the SAME approval pipeline as content)
 --
 -- FR-M-002 says campaigns use the same pipeline as content. That is taken

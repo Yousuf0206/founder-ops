@@ -1,21 +1,25 @@
 /**
- * Workspace bootstrap (T0.6, FR-Q-006).
+ * Workspace bootstrap (T0.6, FR-Q-006; 002 T0.7).
  *
  * Admin path for creating a workspace on someone's behalf. Users normally
  * create their own at /onboarding. This uses the service-role key and
- * therefore bypasses RLS by design.
+ * therefore bypasses RLS by design — it is also the only way, besides an admin
+ * script, that a workspace's plan is assigned (decisions §6).
  *
- *   npm run seed:workspace -- --name "Lumo Learn" --slug lumo --owner you@example.com
+ *   npm run seed:workspace -- --name "Lumo Learn" --slug lumo --owner you@example.com --plan team
  *
- * Idempotent: re-running with the same slug updates the name and ensures the
- * owner membership exists, rather than creating a duplicate.
+ * Idempotent: re-running with the same slug updates the name (and plan, when
+ * given) and ensures the owner membership exists, rather than creating a
+ * duplicate.
  */
 import { createClient } from "@supabase/supabase-js";
 import { config } from "dotenv";
 
+import { PLAN_TIERS, type PlanTier } from "../../lib/plans/entitlements";
+
 config({ path: ".env" });
 
-type Args = { name: string; slug: string; owner: string; cap?: number };
+type Args = { name: string; slug: string; owner: string; cap?: number; plan?: PlanTier };
 
 function parseArgs(argv: string[]): Args {
   const get = (flag: string): string | undefined => {
@@ -27,10 +31,11 @@ function parseArgs(argv: string[]): Args {
   const slug = get("--slug");
   const owner = get("--owner");
   const cap = get("--cap");
+  const plan = get("--plan");
 
   if (!name || !slug || !owner) {
     console.error(
-      'Usage: npm run seed:workspace -- --name "Lumo Learn" --slug lumo --owner you@example.com [--cap 50]',
+      'Usage: npm run seed:workspace -- --name "Lumo Learn" --slug lumo --owner you@example.com [--plan team] [--cap 50]',
     );
     process.exit(1);
   }
@@ -40,7 +45,18 @@ function parseArgs(argv: string[]): Args {
     process.exit(1);
   }
 
-  return { name, slug, owner, cap: cap ? Number(cap) : undefined };
+  if (plan !== undefined && !(PLAN_TIERS as readonly string[]).includes(plan)) {
+    console.error(`Invalid plan "${plan}": use one of ${PLAN_TIERS.join(", ")}.`);
+    process.exit(1);
+  }
+
+  return {
+    name,
+    slug,
+    owner,
+    cap: cap ? Number(cap) : undefined,
+    plan: plan as PlanTier | undefined,
+  };
 }
 
 function requireEnv(name: string): string {
@@ -85,11 +101,12 @@ async function main() {
       {
         name: args.name,
         slug: args.slug,
+        ...(args.plan !== undefined ? { plan: args.plan } : {}),
         ...(args.cap !== undefined ? { daily_run_cap: args.cap } : {}),
       },
       { onConflict: "slug" },
     )
-    .select("id, name, slug, daily_run_cap")
+    .select("id, name, slug, plan, daily_run_cap")
     .single();
 
   if (workspaceError) throw workspaceError;
@@ -108,6 +125,7 @@ async function main() {
     `Workspace "${workspace.name}" (${workspace.slug}) ready.\n` +
       `  id:            ${workspace.id}\n` +
       `  owner:         ${profile.email}\n` +
+      `  plan:          ${workspace.plan}\n` +
       `  daily run cap: ${workspace.daily_run_cap}`,
   );
 }

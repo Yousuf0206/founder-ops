@@ -15,8 +15,8 @@ import { formatIssues } from "@/lib/validation/knowledge";
  * a per-workspace shared secret:
  *
  *   POST /api/ops/leads/ingest
- *   x-founder-ops-workspace: lumo
- *   x-founder-ops-secret:    <the workspace's ingest secret>
+ *   x-lumo-ops-workspace: lumo
+ *   x-lumo-ops-secret:    <the workspace's ingest secret>
  *   { "email": "...", "name": "...", "message": "...", "source": "site-form" }
  *
  * The workspace comes from the verified secret, never from the body — so a
@@ -26,8 +26,8 @@ import { formatIssues } from "@/lib/validation/knowledge";
  */
 
 export async function POST(request: NextRequest) {
-  const slug = request.headers.get("x-founder-ops-workspace");
-  const secret = request.headers.get("x-founder-ops-secret");
+  const slug = request.headers.get("x-lumo-ops-workspace");
+  const secret = request.headers.get("x-lumo-ops-secret");
 
   if (!slug || !secret) {
     return NextResponse.json(

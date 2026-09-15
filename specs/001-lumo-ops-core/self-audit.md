@@ -1,5 +1,12 @@
 # Constitution Self-Audit — v1 core
 
+> **CLOSED — superseded by Constitution v2.0.0 (2026-09-15).** This document was written
+> and built under v1.0.0, whose Principle I was "Draft, Never Auto-Publish". v2.0.0 makes
+> publishing in scope under human-set modes, so parts of this document are now wrong by
+> design. Do not implement against it. See
+> [v2-conformance-audit.md](./v2-conformance-audit.md) for the conflict list, what v2
+> inherits, and what is newly missing.
+
 **Task**: T5.7 · **Date**: 2026-09-11 · **Scope**: Phases 0–5 as built on branch `main`
 
 The constitution's section 6 requires six questions to be answered on every task. This is

@@ -24,13 +24,17 @@ export function testEnv() {
   const host = new URL(url).hostname;
   const isLocal = host === "localhost" || host === "127.0.0.1";
 
+  // Tests only touch rows they create (@example.test users and their workspaces)
+  // and delete them afterwards, but a crashed run can leave residue — so pointing
+  // them at the app's own project needs its own, separate opt-in.
   if (url === process.env.NEXT_PUBLIC_SUPABASE_URL) {
-    throw new Error(
-      "Refusing to run destructive tests: TEST_SUPABASE_URL is the same as NEXT_PUBLIC_SUPABASE_URL (production).",
-    );
-  }
-
-  if (!isLocal && process.env.TEST_SUPABASE_ALLOW_REMOTE !== "true") {
+    if (process.env.TEST_SUPABASE_ALLOW_APP_PROJECT !== "true") {
+      throw new Error(
+        "Refusing to run destructive tests: TEST_SUPABASE_URL is the same as NEXT_PUBLIC_SUPABASE_URL (production). " +
+          "Set TEST_SUPABASE_ALLOW_APP_PROJECT=true to run against the app's project deliberately.",
+      );
+    }
+  } else if (!isLocal && process.env.TEST_SUPABASE_ALLOW_REMOTE !== "true") {
     throw new Error(
       `Refusing to run destructive tests against ${host}. TEST_SUPABASE_URL must be local, ` +
         `or set TEST_SUPABASE_ALLOW_REMOTE=true to confirm this is a dedicated remote test project.`,
@@ -71,6 +75,8 @@ export async function createUser(
   return { id: data.user.id, client };
 }
 
+/** Throws on failure: a silently failed cleanup leaves test users behind. */
 export async function deleteUser(admin: SupabaseClient, userId: string): Promise<void> {
-  await admin.auth.admin.deleteUser(userId);
+  const { error } = await admin.auth.admin.deleteUser(userId);
+  if (error) throw new Error(`Failed to delete test user ${userId}: ${error.message}`);
 }

@@ -4,7 +4,7 @@ import type { EmailOtpType } from "@supabase/supabase-js";
 
 import { createSupabaseServerClient } from "@/lib/db/server";
 
-const NEXT_COOKIE = "founder-ops-auth-next";
+const NEXT_COOKIE = "lumo-ops-auth-next";
 
 /** Only ever redirect to a path on this origin. */
 function safePath(next: string | null): string {

@@ -177,6 +177,37 @@ export async function revokeInvitationAction(formData: FormData): Promise<void> 
   revalidatePath("/settings");
 }
 
+const memberSchema = z.object({ membership_id: z.string().uuid() });
+
+/**
+ * US7 AC4: removing a member ends their access to every row immediately,
+ * because every policy checks membership. The database refuses to remove the
+ * last owner (migration 0013).
+ */
+export async function removeMemberAction(formData: FormData): Promise<void> {
+  const session = await requireSession();
+  const workspaceId = session.activeWorkspace.workspaceId;
+  if (!isOwner(session.activeWorkspace.role)) return;
+
+  const parsed = memberSchema.safeParse({ membership_id: formData.get("membership_id") });
+  if (!parsed.success) return;
+
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("memberships")
+    .delete()
+    .eq("workspace_id", workspaceId)
+    .eq("id", parsed.data.membership_id)
+    .neq("user_id", session.userId)
+    .select("id");
+
+  if (!error && (data ?? []).length > 0) {
+    await writeAudit(workspaceId, "membership.removed", "membership", parsed.data.membership_id, {});
+  }
+
+  revalidatePath("/settings");
+}
+
 export type IngestSecretState = { error?: string; secret?: string };
 
 /**

@@ -1,10 +1,17 @@
-# Implementation Plan: Founder Ops Core
+# Implementation Plan: Lumo-Ops Core
 
-**Branch**: `001-founder-ops-core` | **Date**: 2026-09-11 | **Spec**: [spec.md](./spec.md)
-**Input**: Founder Ops — Plan v1.0 (user-authored) + `specs/001-founder-ops-core/spec.md`
+> **CLOSED — superseded by Constitution v2.0.0 (2026-09-15).** This document was written
+> and built under v1.0.0, whose Principle I was "Draft, Never Auto-Publish". v2.0.0 makes
+> publishing in scope under human-set modes, so parts of this document are now wrong by
+> design. Do not implement against it. See
+> [v2-conformance-audit.md](./v2-conformance-audit.md) for the conflict list, what v2
+> inherits, and what is newly missing.
+
+**Branch**: `001-lumo-ops-core` | **Date**: 2026-09-11 | **Spec**: [spec.md](./spec.md)
+**Input**: Lumo-Ops — Plan v1.0 (user-authored) + `specs/001-lumo-ops-core/spec.md`
 
 > HOW we build it. WHAT is in `spec.md`. Tickets in `tasks.md`.
-> Governed by `.specify/memory/constitution.md` (Founder Ops Constitution v1.0.0).
+> Governed by `.specify/memory/constitution.md` (Lumo-Ops Constitution v1.0.0).
 
 ## Summary
 
@@ -61,7 +68,7 @@ human.
 ### Documentation (this feature)
 
 ```text
-specs/001-founder-ops-core/
+specs/001-lumo-ops-core/
 ├── spec.md              # WHAT (written)
 ├── plan.md              # This file
 ├── data-model.md        # Phase 1 output — tables, columns, RLS policies

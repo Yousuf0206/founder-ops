@@ -21,6 +21,25 @@ export class MissingClaimSetError extends Error {
   }
 }
 
+/**
+ * Decisions §7: an empty approved-claims list refuses generation. A subclass of
+ * MissingClaimSetError, so every caller that already maps "claims not ready" to
+ * a refusal handles this case the same way.
+ */
+export class EmptyApprovedClaimsError extends MissingClaimSetError {
+  constructor() {
+    super();
+    this.message =
+      "This workspace has no approved claims. Generation is refused until at least one " +
+      "approved claim is added at /knowledge/claims.";
+    this.name = "EmptyApprovedClaimsError";
+  }
+}
+
+export function hasApprovedClaims(claimSet: ClaimSet): boolean {
+  return claimSet.approved_claims.some((claim) => claim.trim().length > 0);
+}
+
 export const UNKNOWN_INSTRUCTION =
   "If unknown, say unknown; never invent product facts.";
 
@@ -46,6 +65,7 @@ export function assembleSystemPrompt(
 
   // The guard that makes Constitution III structural rather than procedural.
   if (!claimSet) throw new MissingClaimSetError();
+  if (!hasApprovedClaims(claimSet)) throw new EmptyApprovedClaimsError();
 
   const sections: string[] = [role.trim()];
 

@@ -3,16 +3,15 @@ import { z } from "zod";
 
 import { requireSession } from "@/lib/knowledge/repo";
 import { contentPayloadSchema } from "@/lib/ai/content";
-import { decideOnDraft, markPublished } from "@/lib/approvals/repo";
+import { decideOnDraft } from "@/lib/approvals/repo";
 import { toRunResponse } from "@/lib/http/run-errors";
 import { formatIssues } from "@/lib/validation/knowledge";
 
 /**
  * POST /api/ops/approvals/:id/decision (FR-A-002).
  *
- * `mark_published` is included here because it is the same kind of act — a
- * human recording a decision. It changes a status and writes an audit row; it
- * publishes nothing (FR-A-003).
+ * v1's `mark_published` decision is removed (002 T2.13): a draft becomes
+ * published only through a publish job with a platform receipt.
  */
 
 const bodySchema = z.discriminatedUnion("decision", [
@@ -29,7 +28,6 @@ const bodySchema = z.discriminatedUnion("decision", [
     payload: contentPayloadSchema,
     notes: z.string().max(2_000).optional(),
   }),
-  z.object({ decision: z.literal("mark_published") }),
 ]);
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -47,13 +45,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: formatIssues(parsed.error) }, { status: 400 });
     }
 
-    // Authority is checked in the database, inside decide_on_draft() and
-    // mark_draft_published(), so it holds for every caller of either.
-    if (parsed.data.decision === "mark_published") {
-      await markPublished(id);
-      return NextResponse.json({ status: "published" });
-    }
-
+    // Authority is checked in the database, inside decide_on_draft(), so it
+    // holds for every caller.
     await decideOnDraft({
       draftId: id,
       decision: parsed.data.decision,

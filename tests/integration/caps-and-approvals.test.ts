@@ -286,13 +286,21 @@ describeIfConfigured("approvals", () => {
     expect(error!.message).toMatch(/already been decided/i);
   });
 
-  it("only an approved draft can be marked published", async () => {
-    const draftId = await newDraft("not approved yet");
-    const { error } = await owner.client.rpc("mark_draft_published", {
+  it("a draft can no longer be marked published by hand (002 T2.13)", async () => {
+    const draftId = await newDraft("manual mark");
+    await owner.client.rpc("decide_on_draft", {
       draft_id: draftId,
+      decision: "approved",
+      edited_payload: null,
+      reviewer_notes: "",
     });
 
+    // Removed in 0011: `published` is reachable only through a publish job.
+    const { error } = await owner.client.rpc("mark_draft_published", { draft_id: draftId });
     expect(error).not.toBeNull();
+
+    const { data } = await admin.from("content_drafts").select("status").eq("id", draftId).single();
+    expect(data!.status).toBe("approved");
   });
 
   it("a client cannot set status directly, bypassing the decision path", async () => {

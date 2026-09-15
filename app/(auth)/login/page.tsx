@@ -129,7 +129,7 @@ export default async function LoginPage({
 
   return (
     <div className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-6">
-      <h1 className="text-lg font-semibold tracking-tight">Founder Ops</h1>
+      <h1 className="text-lg font-semibold tracking-tight">Lumo-Ops</h1>
       <p className="mt-1 text-sm text-muted">
         {signingUp ? "Create your account to get started." : "Sign in to your workspace."}
       </p>
@@ -201,7 +201,7 @@ export default async function LoginPage({
       </form>
 
       <p className="mt-6 text-sm text-muted">
-        {signingUp ? "Already have an account? " : "New to Founder Ops? "}
+        {signingUp ? "Already have an account? " : "New to Lumo-Ops? "}
         <a
           href={loginUrl(next, signingUp ? "signin" : "signup")}
           className="font-medium text-ink underline"

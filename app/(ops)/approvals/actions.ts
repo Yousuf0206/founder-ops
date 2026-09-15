@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { AuthError, requireSession } from "@/lib/knowledge/repo";
 import { contentPayloadSchema } from "@/lib/ai/content";
-import { decideOnDraft, markPublished } from "@/lib/approvals/repo";
+import { decideOnDraft } from "@/lib/approvals/repo";
 import { formatIssues } from "@/lib/validation/knowledge";
 
 export type DecisionState = { error?: string; done?: string };
@@ -32,13 +32,6 @@ export async function decideAction(
 
   try {
     await requireSession();
-
-    if (decision === "mark_published") {
-      await markPublished(draftId);
-      revalidatePath("/approvals");
-      revalidatePath(`/content/${draftId}`);
-      return { done: "Marked as published. The system published nothing." };
-    }
 
     if (decision !== "approved" && decision !== "rejected" && decision !== "edited_and_approved") {
       return { error: "Unknown decision." };

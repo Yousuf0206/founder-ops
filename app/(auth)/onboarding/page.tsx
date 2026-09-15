@@ -7,16 +7,19 @@ import {
   getOpsSession,
 } from "@/lib/auth/session";
 import { createSupabaseAdminClient, createSupabaseServerClient } from "@/lib/db/server";
+import { defaultPlan } from "@/lib/plans/entitlements";
 import { firstIssue } from "@/lib/validation/auth";
-import { MAX_OWNED_WORKSPACES, workspaceCreateSchema } from "@/lib/validation/workspace";
+import { workspaceCreateSchema } from "@/lib/validation/workspace";
 
 /**
- * Self-serve workspace creation. Any signed-in user can create a workspace and
- * becomes its owner; each workspace is one app (Constitution VI).
+ * Self-serve workspace creation (002 US1, FR-O-001/002). Any signed-in user can
+ * create a workspace for one product and becomes its owner.
  *
- * `workspaces` has no INSERT policy for `authenticated`, so creation runs on
- * the service-role client — but only after the caller's identity comes from
- * their own session, never from the form.
+ * Creation runs through create_workspace_with_owner() (migration 0008), which
+ * enforces the plan's workspace limit under a lock and writes the workspace,
+ * owner membership, and audit row together. It is service-role only: the
+ * caller's identity comes from their session and the plan from DEFAULT_PLAN —
+ * never from the form.
  */
 export default async function OnboardingPage({
   searchParams,
@@ -47,47 +50,38 @@ export default async function OnboardingPage({
     const parsed = workspaceCreateSchema.safeParse({
       name: formData.get("name"),
       slug: formData.get("slug"),
+      niche: formData.get("niche"),
+      primary_url: formData.get("primary_url"),
+      goals: formData.get("goals"),
+      tone: formData.get("tone"),
     });
     if (!parsed.success) redirect(back(firstIssue(parsed.error)));
 
     const admin = createSupabaseAdminClient();
+    const { data: workspaceId, error } = await admin.rpc("create_workspace_with_owner", {
+      p_owner: caller.id,
+      p_name: parsed.data.name,
+      p_slug: parsed.data.slug,
+      p_plan: defaultPlan(),
+      p_niche: parsed.data.niche,
+      p_primary_url: parsed.data.primary_url || null,
+      p_goals: parsed.data.goals,
+      p_tone: parsed.data.tone,
+    });
 
-    const { count, error: countError } = await admin
-      .from("memberships")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", caller.id)
-      .eq("role", "owner");
-    if (countError) redirect(back("Could not create the workspace. Try again."));
-    if ((count ?? 0) >= MAX_OWNED_WORKSPACES) {
-      redirect(back(`You can own up to ${MAX_OWNED_WORKSPACES} workspaces.`));
-    }
-
-    const { data: workspace, error: workspaceError } = await admin
-      .from("workspaces")
-      .insert(parsed.data)
-      .select("id")
-      .single();
-    if (workspaceError || !workspace) {
-      redirect(
-        back(
-          workspaceError?.code === "23505"
-            ? `The URL "${parsed.data.slug}" is taken. Choose another.`
-            : "Could not create the workspace. Try again.",
-        ),
-      );
-    }
-
-    const { error: membershipError } = await admin
-      .from("memberships")
-      .insert({ user_id: caller.id, workspace_id: workspace.id, role: "owner" });
-    if (membershipError) {
-      // No orphan tenants: a workspace without an owner is unreachable.
-      await admin.from("workspaces").delete().eq("id", workspace.id);
+    if (error || !workspaceId) {
+      if (error?.code === "23505") {
+        redirect(back(`The URL "${parsed.data.slug}" is taken. Choose another.`));
+      }
+      if (error?.message && /workspace limit reached/i.test(error.message)) {
+        redirect(back(`You have reached your plan's workspace limit (${error.message}).`));
+      }
+      console.error(error);
       redirect(back("Could not create the workspace. Try again."));
     }
 
     // Land in the workspace just created, not whichever was active before.
-    (await cookies()).set(ACTIVE_WORKSPACE_COOKIE, workspace.id, activeWorkspaceCookieOptions);
+    (await cookies()).set(ACTIVE_WORKSPACE_COOKIE, workspaceId as string, activeWorkspaceCookieOptions);
 
     redirect("/");
   }
@@ -96,12 +90,12 @@ export default async function OnboardingPage({
   const hasWorkspace = Boolean(session);
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-6">
+    <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-10">
       <h1 className="text-lg font-semibold tracking-tight">
         {hasWorkspace ? "Create another workspace" : "Create your workspace"}
       </h1>
       <p className="mt-1 text-sm text-muted">
-        A workspace holds one app&apos;s knowledge base, content, leads, and campaigns.
+        A workspace holds one product&apos;s knowledge, claims, content, publishing, and leads.
       </p>
 
       {params.error && (
@@ -111,30 +105,31 @@ export default async function OnboardingPage({
       )}
 
       <form action={createWorkspace} className="mt-6 flex flex-col gap-3">
-        <label className="text-sm" htmlFor="name">
-          Workspace name
-        </label>
-        <input
-          id="name"
-          name="name"
-          required
-          maxLength={120}
-          className="rounded-md border border-line bg-surface px-3 py-2 text-sm"
-          placeholder="My App"
+        <Field label="Workspace name" name="name" required maxLength={120} placeholder="My App" />
+        <Field label="URL name" name="slug" maxLength={60} placeholder="my-app" />
+        <Field label="Niche" name="niche" maxLength={200} placeholder="Exam prep for matric students" />
+        <Field
+          label="Primary URL"
+          name="primary_url"
+          type="url"
+          maxLength={2000}
+          placeholder="https://myapp.example"
         />
-        <label className="text-sm" htmlFor="slug">
-          URL name <span className="text-muted">(optional)</span>
+        <label className="text-sm" htmlFor="goals">
+          Goals <span className="text-muted">(optional)</span>
         </label>
-        <input
-          id="slug"
-          name="slug"
-          maxLength={60}
+        <textarea
+          id="goals"
+          name="goals"
+          rows={3}
+          maxLength={2000}
           className="rounded-md border border-line bg-surface px-3 py-2 text-sm"
-          placeholder="my-app"
+          placeholder="More trial sign-ups from parents"
         />
+        <Field label="Tone" name="tone" maxLength={200} placeholder="Warm, plain, no hype" />
         <button
           type="submit"
-          className="rounded-md bg-accent px-3 py-2 text-sm font-medium text-white"
+          className="mt-2 rounded-md bg-accent px-3 py-2 text-sm font-medium text-white"
         >
           Create workspace
         </button>
@@ -149,5 +144,38 @@ export default async function OnboardingPage({
         </p>
       </form>
     </div>
+  );
+}
+
+function Field({
+  label,
+  name,
+  required,
+  maxLength,
+  placeholder,
+  type = "text",
+}: {
+  label: string;
+  name: string;
+  required?: boolean;
+  maxLength: number;
+  placeholder?: string;
+  type?: string;
+}) {
+  return (
+    <>
+      <label className="text-sm" htmlFor={name}>
+        {label} {!required && <span className="text-muted">(optional)</span>}
+      </label>
+      <input
+        id={name}
+        name={name}
+        type={type}
+        required={required}
+        maxLength={maxLength}
+        className="rounded-md border border-line bg-surface px-3 py-2 text-sm"
+        placeholder={placeholder}
+      />
+    </>
   );
 }

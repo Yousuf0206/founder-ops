@@ -1,87 +1,92 @@
-# Founder Ops Constitution
+# Lumo-Ops Constitution
 
 **Status: BINDING for all implementation.**
 
-Product: Multi-workspace SaaS for marketing, content, sales intake, and R&D.
-First tenant: Lumo Learn.
+App name: Lumo-Ops.
+Product type: B2B multi-tenant growth platform (not a student learning app).
+First workspace: Lumo Learn (dogfood).
 
 ## Core Vision
 
-Founder Ops helps small teams draft growth work from a single source of product truth —
-research, content, campaigns, and inbound leads — with human approval before anything
-goes public. It must work for Lumo Learn first and for additional apps via workspaces
-without forking the codebase.
+Teams connect a product or niche and get multiplied output across research, strategy,
+media, publishing, lead intake, and learning — without hiring in linear proportion to
+content volume. Control (claims, roles, approvals, caps, audit) scales from solo founder
+to large teams.
 
 ## Core Principles
 
-### I. Draft, Never Auto-Publish (NON-NEGOTIABLE)
-Bots prepare; humans approve. No code path may push content, messages, or changes to a
-public or external surface without an explicit human approval action. Any task that
-implies auto-publishing must be refused.
+### I. Product Truth First
+Every workspace has knowledge + approved claims + forbidden claims + voice. That
+knowledge base is the only source of product claims for that workspace: no hardcoded
+product facts, no per-feature claim stores, no cross-workspace borrowing.
 
-### II. One Knowledge Base Per Workspace
-A workspace's knowledge base is the only source of product claims for that workspace.
-No hardcoded product facts, no per-feature claim stores, no cross-workspace borrowing.
+### II. No Invented Product Facts
+If a fact is unknown, the system says unknown. Unsafe or unsupported claims are refused,
+not hedged. Approved and forbidden claims are injected into every AI prompt for that
+workspace — enforcement is a prompt-construction requirement, not a post-hoc filter.
 
-### III. Claims Bind Every Prompt
-Approved claims and forbidden claims from the workspace knowledge base are injected into
-every AI prompt for that workspace. Forbidden-claim enforcement is a prompt-construction
-requirement, not a post-hoc filter.
+### III. Distribution Is In Scope
+Publishing and scheduling are first-class product surfaces, restricted to accounts the
+workspace has explicitly connected. Connectors use official OAuth APIs where available.
+Posting to non-owned accounts is never permitted.
 
-### IV. No Cold Outreach or Bulk Messaging (v1)
-Inbound only. No cold email, no bulk sends, no sequenced campaigns to non-consenting
-recipients in v1.
+### IV. Humans Set The Mode (NON-NEGOTIABLE)
+Every publish path runs in exactly one workspace-configured mode:
+`draft-only` | `approve-then-publish` | `auto-within-rules`. Mode is explicit, visible,
+and owner-controlled. A publish code path with no mode attached is a bug, not a default.
 
-### V. Open Sign-Up, Isolated Workspaces, Never Student-Facing
-Anyone may create an account and create workspaces for their own apps. A user sees only
-the workspaces they are a member of, and that isolation is enforced by Supabase RLS. No
-student accounts, no student-facing surfaces, no mixing into student UX.
+### V. Auto-Publish Never Bypasses Guardrails
+`auto-within-rules` still runs claim checks and still respects daily caps. There is no
+code path that publishes while skipping either. Missing or unenforced caps are bugs.
 
-### VI. Multi-Workspace From Day One
-Every table, query, policy, and AI run carries `workspace_id` from the first migration,
-even while the UI shows a single workspace. Additional apps onboard as workspaces, never
-as forks.
+### VI. No Cold Spam
+No scraping strangers for unsolicited outreach. Leads are inbound or come from explicitly
+compliant sources. Bulk unsolicited messaging is blocked.
 
-### VII. Everything Audited
-Every AI run and every approval is written to an audit log with actor, workspace, inputs
-reference, and outcome.
+### VII. Workspace Isolation Is Absolute
+Every table, query, policy, and AI run carries `workspace_id`. A user sees only the
+workspaces they are a member of, enforced by Supabase RLS (or equivalent). Isolation is
+not a UI concern.
 
-### VIII. Cost Caps Are Mandatory
-Each workspace has enforced daily AI run limits. A missing or unenforced cap is a bug,
-not a backlog item.
+### VIII. Everything Audited
+Every AI run, every publish action, and every approval is written to an audit log with
+actor, workspace, inputs reference, and outcome.
 
-### IX. Secrets Never Reach the Browser
-API keys, service-role credentials, and provider tokens stay server-side. LLM calls are
-made from server code only.
+### IX. One Platform, 1→N Teams
+Team size is handled by roles, not by separate products. A solo founder and a large team
+run the same codebase with different role assignments and approval requirements.
 
-### X. Simple, Complete, Runnable
-Prefer simple, complete, runnable work over partial agent theatre. Ship a working slice
-rather than scaffolding for an unbuilt one.
+### X. Dogfood
+Lumo must be runnable as a workspace on Lumo-Ops. If the founders would not use it for
+their own growth work, the scope is wrong.
 
-## Product Boundaries
+## Agent Boundaries
 
-**In scope (v1):** Knowledge base, R&D reports, content drafts, approvals, inbound leads,
-campaign drafts, audit logs, workspace isolation.
+**In scope:** analyze a public product URL or content; R&D from supplied inputs; score
+campaign ideas; produce multi-platform drafts; publish via OAuth to connected accounts;
+ingest inbound leads; pull performance metrics; recommend next actions; update workspace
+knowledge with human confirmation.
 
-**Out of scope (v1):** Auto social publish, video rendering, full CRM, n8n requirement,
-autonomous multi-agent loops, public third-party API, student accounts.
+**Out of scope (v2.0 launch):** mass unsolicited outreach; posting to non-owned accounts;
+guaranteed rank or revenue claims; silent publish with no mode or caps.
 
 ## Safety Levels
 
 | Level | Handling | Examples |
 |---|---|---|
-| Low risk | Automatic | Summaries, internal reports, draft generation, lead classification |
-| Medium risk | One-click human action | Optional single follow-up email send (off by default) |
-| High risk | Human only / blocked in v1 | Public publish automation, bulk send, pricing changes, refunds, deleting another workspace's data |
+| Low | Automatic | Internal research, drafts, classification |
+| Medium | One-click approval or queue | Single publish to a connected account |
+| High | Owner only | Auto-publish rules, secret rotation, role changes |
+| Blocked | Refused | Bulk unsolicited messaging, claim-violating copy |
 
-## Stack Defaults (v1)
+## Stack Defaults
 
 - **App:** Next.js (App Router) + TypeScript strict + Tailwind
 - **DB/Auth:** Supabase (Auth + Postgres + RLS)
-- **AI:** Direct server-side LLM calls (no Dify required for MVP)
+- **AI:** Server-side LLM calls only; provider keys never reach the browser
 - **Hosting:** Vercel
-- **Notify:** Email first
-- **First deploy:** Separate app or separate route group; not mixed into student UX
+- **Channels:** Official OAuth APIs where available
+- **Notify:** Email
 
 ## Governance
 
@@ -89,16 +94,25 @@ This constitution supersedes all other practices. Amendments require an explicit
 bump and a dated entry below.
 
 **Self-audit — run on every task before reporting completion:**
-1. Does this respect draft-only external actions?
-2. Is all data scoped by `workspace_id`?
-3. Are forbidden claims enforced in the prompts this task touches?
-4. Is workspace data isolated to its members with RLS?
-5. Is anything auto-publishing? If yes → refuse.
+1. Does this multiply team output, or only create orphan drafts?
+2. Are approved/forbidden claims enforced in the prompts this task touches?
+3. Is all data scoped by `workspace_id` and isolated by RLS?
+4. Is the publish path explicit, mode-attached, and authorized to a connected account?
+5. Is a measurable outcome possible for this work?
 
-**Version**: 1.1.0 | **Ratified**: 2026-09-11 | **Last Amended**: 2026-09-15
+**Version**: 2.0.0 | **Ratified**: 2026-09-11 | **Last Amended**: 2026-09-15
 
 ### Amendments
 
+- **2.0.0 — 2026-09-15:** Major rewrite. Product renamed from "Founder Ops" to **Lumo-Ops**
+  and reframed from an internal OS to a B2B multi-tenant growth platform. **Breaking change to Principle I of v1.x:**
+  "Draft, Never Auto-Publish" is replaced by human-set publish modes
+  (`draft-only` | `approve-then-publish` | `auto-within-rules`) — publishing and
+  scheduling to workspace-connected accounts are now in scope, with claim checks and
+  daily caps mandatory on every mode including auto. Distribution, inbound lead intake,
+  metrics pull, and next-action recommendation added to agent scope. Dogfood requirement
+  added as Principle X. Any v1-era code or spec that hard-refuses all publishing must be
+  revisited against Principles III–V.
 - **1.1.0 — 2026-09-15:** Principle V changed from "Team-Only" to "Open Sign-Up, Isolated
   Workspaces". Founder Ops is a SaaS for any app, not an internal team tool: anyone can
   sign up and create workspaces. Workspace isolation via RLS is unchanged. Supersedes the

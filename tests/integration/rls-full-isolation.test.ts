@@ -4,7 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { adminClient, createUser, deleteUser, testEnv } from "../helpers/supabase";
 
 /**
- * T5.4 / SC-003 — the whole-system isolation proof.
+ * T5.4 / SC-003 (002: NFR-001, SC-005) — the whole-system isolation proof.
  *
  * Two fully-populated workspaces, A and B, and a user who belongs only to A.
  * For EVERY table in the product, that user must see A's rows and none of B's.
@@ -29,6 +29,17 @@ const ALL_TABLES = [
   "leads",
   "ai_run_logs",
   "audit_logs",
+  // 002 Phase 1 (0009)
+  "analyze_runs",
+  "strategy_ideas",
+  // 002 Phase 2 (0010–0012)
+  "connected_accounts",
+  "publish_jobs",
+  // 002 Phase 4 (0014)
+  "lead_tasks",
+  "performance_snapshots",
+  "learn_summaries",
+  "knowledge_proposals",
 ] as const;
 
 describeIfConfigured("RLS: no cross-workspace reads, any table", () => {
@@ -39,12 +50,14 @@ describeIfConfigured("RLS: no cross-workspace reads, any table", () => {
   let workspaceA: string;
   let workspaceB: string;
 
+  async function insert(table: string, row: Record<string, unknown>): Promise<string> {
+    const { data, error } = await admin.from(table).insert(row).select("id").single();
+    if (error) throw new Error(`${table}: ${error.message}`);
+    return data.id as string;
+  }
+
   async function populate(workspaceId: string, tag: string, ownerId: string) {
-    await admin.from("knowledge_docs").insert({
-      workspace_id: workspaceId,
-      title: `${tag} doc`,
-      body: "body",
-    });
+    await insert("knowledge_docs", { workspace_id: workspaceId, title: `${tag} doc`, body: "body" });
 
     await admin.from("claim_sets").insert({
       workspace_id: workspaceId,
@@ -53,60 +66,91 @@ describeIfConfigured("RLS: no cross-workspace reads, any table", () => {
       brand_voice: tag,
     });
 
-    await admin.from("research_reports").insert({
+    await insert("research_reports", { workspace_id: workspaceId, input_blob: `${tag} notes`, status: "succeeded" });
+
+    const draft = await insert("content_drafts", {
       workspace_id: workspaceId,
-      input_blob: `${tag} notes`,
-      status: "succeeded",
+      topic: `${tag} topic`,
+      platform: "linkedin",
+      payload_json: { hook: tag },
     });
 
-    const { data: draft } = await admin
-      .from("content_drafts")
-      .insert({
-        workspace_id: workspaceId,
-        topic: `${tag} topic`,
-        platform: "instagram",
-        payload_json: { hook: tag },
-      })
-      .select("id")
-      .single();
+    await insert("campaigns", { workspace_id: workspaceId, goal: `${tag} goal`, payload_json: { posts: [] } });
 
-    await admin.from("campaigns").insert({
-      workspace_id: workspaceId,
-      goal: `${tag} goal`,
-      payload_json: { posts: [] },
-    });
-
-    await admin.from("leads").insert({
+    const lead = await insert("leads", {
       workspace_id: workspaceId,
       email: `lead-${tag}-${suffix}@example.test`,
       message: tag,
     });
 
-    await admin.from("ai_run_logs").insert({
-      workspace_id: workspaceId,
-      action: "test.run",
-      status: "succeeded",
-    });
+    await insert("ai_run_logs", { workspace_id: workspaceId, action: "test.run", status: "succeeded" });
+    await insert("audit_logs", { workspace_id: workspaceId, action: "test.action" });
 
-    await admin.from("audit_logs").insert({
-      workspace_id: workspaceId,
-      action: "test.action",
-    });
-
-    await admin.from("approvals").insert({
+    await insert("approvals", {
       workspace_id: workspaceId,
       target_type: "content_draft",
-      target_id: draft!.id,
+      target_id: draft,
       status: "approved",
       reviewer_id: ownerId,
     });
 
-    await admin.from("invitations").insert({
+    await insert("invitations", {
       workspace_id: workspaceId,
       email: `invitee-${tag}-${suffix}@example.test`,
       token: `token-${tag}-${suffix}`,
       invited_by: ownerId,
       expires_at: new Date(Date.now() + 86_400_000).toISOString(),
+    });
+
+    const analysis = await insert("analyze_runs", {
+      workspace_id: workspaceId,
+      source_url: "https://example.test",
+      status: "succeeded",
+    });
+
+    await insert("strategy_ideas", {
+      workspace_id: workspaceId,
+      analyze_run_id: analysis,
+      title: `${tag} idea`,
+      impact: 50,
+      effort: 50,
+      confidence: 50,
+      evidence_refs: [{ source: "analysis", ref: tag, quote: tag }],
+    });
+
+    const account = await insert("connected_accounts", {
+      workspace_id: workspaceId,
+      platform: "linkedin",
+      external_account_id: `${tag}-${suffix}`,
+      access_token_encrypted: "v1.iv.tag.ct",
+    });
+
+    const job = await insert("publish_jobs", {
+      workspace_id: workspaceId,
+      draft_id: draft,
+      connected_account_id: account,
+      platform: "linkedin",
+      mode: "approve_then_publish",
+      actor: `user:${ownerId}`,
+      claim_check: { passed: true },
+      body_snapshot: { hook: tag },
+      status: "queued",
+    });
+
+    await insert("lead_tasks", { workspace_id: workspaceId, lead_id: lead, note: `${tag} task` });
+    await insert("performance_snapshots", { workspace_id: workspaceId, publish_job_id: job, available: false });
+
+    const summary = await insert("learn_summaries", {
+      workspace_id: workspaceId,
+      period_start: new Date(Date.now() - 86_400_000).toISOString(),
+      period_end: new Date().toISOString(),
+    });
+
+    await insert("knowledge_proposals", {
+      workspace_id: workspaceId,
+      summary_id: summary,
+      kind: "approved_claim_add",
+      proposed_text: `${tag} proposal`,
     });
   }
 
@@ -137,6 +181,8 @@ describeIfConfigured("RLS: no cross-workspace reads, any table", () => {
     await populate(workspaceA, "alpha", userA.id);
     await populate(workspaceB, "bravo", ownerB.id);
 
+    // B's invitation references ownerB (on delete restrict), so it goes first.
+    await admin.from("invitations").delete().eq("workspace_id", workspaceB);
     await deleteUser(admin, ownerB.id);
   });
 

@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-09-11
-- **Feature:** 001-founder-ops-core
+- **Feature:** 001-lumo-ops-core
 - **Context:** Constitution VI requires multi-workspace support in the data model from day
   one, and Constitution V requires the product to be team-only with RLS. Spec v1.0 named
   three roles and a `Membership` entity but specified no way for a second person to obtain
@@ -113,10 +113,10 @@ warrant its own ADR.
 
 ## References
 
-- Feature Spec: [specs/001-founder-ops-core/spec.md](../../specs/001-founder-ops-core/spec.md) — FR-Q-002, FR-Q-006, FR-Q-007 under Resolved Clarifications
-- Implementation Plan: [specs/001-founder-ops-core/plan.md](../../specs/001-founder-ops-core/plan.md) — Constitution Check rows V, VI, VIII
+- Feature Spec: [specs/001-lumo-ops-core/spec.md](../../specs/001-lumo-ops-core/spec.md) — FR-Q-002, FR-Q-006, FR-Q-007 under Resolved Clarifications
+- Implementation Plan: [specs/001-lumo-ops-core/plan.md](../../specs/001-lumo-ops-core/plan.md) — Constitution Check rows V, VI, VIII
 - Constitution: [.specify/memory/constitution.md](../../.specify/memory/constitution.md) — principles V, VI, VII, VIII
 - Migration: [supabase/migrations/0001_foundation.sql](../../supabase/migrations/0001_foundation.sql)
 - Tests: [tests/integration/rls-foundation.test.ts](../../tests/integration/rls-foundation.test.ts) — 13 cases, **written but not yet executed**
-- Evaluator Evidence: [history/prompts/001-founder-ops-core/0005-phase-zero-foundation.green.prompt.md](../prompts/001-founder-ops-core/0005-phase-zero-foundation.green.prompt.md)
+- Evaluator Evidence: [history/prompts/001-lumo-ops-core/0005-phase-zero-foundation.green.prompt.md](../prompts/001-lumo-ops-core/0005-phase-zero-foundation.green.prompt.md)
 - Related ADRs: none

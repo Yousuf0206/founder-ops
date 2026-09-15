@@ -1,4 +1,4 @@
--- Founder Ops — Phase 4 inbound leads
+-- Lumo-Ops — Phase 4 inbound leads
 -- Tasks: T4.1 (table + RLS), T4.2 (per-workspace ingest secret), T4.8 (duplicates)
 --
 -- Constitution IV: no cold outreach or bulk messaging. Nothing here can send
