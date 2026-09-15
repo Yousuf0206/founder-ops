@@ -27,6 +27,7 @@ const NAV = [
   { href: "/leads", label: "Leads" },
   { href: "/audit", label: "Audit" },
   { href: "/settings", label: "Settings" },
+  { href: "/help", label: "Help" },
 ] as const;
 
 export default async function OpsLayout({
