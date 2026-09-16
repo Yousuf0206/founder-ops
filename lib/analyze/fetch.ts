@@ -20,8 +20,8 @@ import { isIP } from "node:net";
  * what a rebinding could achieve.
  */
 
-export const USER_AGENT = "LumoOpsBot/1.0 (+product analysis; honours robots.txt)";
-const ROBOTS_AGENT = "lumoopsbot";
+export const USER_AGENT = "LumoGrowBot/1.0 (+product analysis; honours robots.txt)";
+const ROBOTS_AGENT = "lumogrowbot";
 const MAX_BYTES = 1_000_000;
 const MAX_REDIRECTS = 3;
 const TIMEOUT_MS = 10_000;

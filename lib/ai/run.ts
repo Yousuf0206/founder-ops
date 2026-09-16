@@ -3,7 +3,12 @@ import "server-only";
 import type { OpsSession } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/db/server";
 import { getClaimSet, listDocs, type ClaimSet } from "@/lib/knowledge/repo";
-import { assembleSystemPrompt, MissingClaimSetError } from "@/lib/prompts/assemble";
+import { getProductFacts, type ProductFacts } from "@/lib/facts/repo";
+import {
+  assembleSystemPrompt,
+  hasProductFacts,
+  MissingClaimSetError,
+} from "@/lib/prompts/assemble";
 import {
   generate,
   isProviderConfigured,
@@ -15,7 +20,9 @@ import {
  * The guarded path every AI run takes (T2.2, T2.6, T2.8, T2.11).
  *
  * Order matters and is deliberate:
- *   1. claim set must exist          → refuse before spending anything
+ *   1. a binding source of product truth must exist → refuse before spending
+ *      anything. v3.0.0 (T-A7): approved claims OR auto-extracted product facts
+ *      satisfy this; neither one present is still a refusal.
  *   2. reserve a slot against the cap → transactional, in the database
  *   3. call the provider
  *   4. close the run out, success or failure
@@ -65,7 +72,14 @@ async function capRefusalMessage(
 
 export type RunContext = {
   runId: string;
-  claimSet: ClaimSet;
+  /**
+   * Null on a first-run workspace, which is bound by product facts instead
+   * (T-A7). Callers checking output for forbidden content must use
+   * `findForbiddenViolations`, which covers both layers, not
+   * `findForbiddenClaims` alone.
+   */
+  claimSet: ClaimSet | null;
+  productFacts: ProductFacts | null;
   result: GenerationResult;
 };
 
@@ -83,13 +97,20 @@ export async function runGeneration(options: {
 
   if (!isProviderConfigured()) throw new ProviderNotConfiguredError();
 
-  // 1. Claim set first. No claim set, no generation — and no cap consumed.
-  const claimSet = await getClaimSet(workspaceId);
-  if (!claimSet) throw new MissingClaimSetError();
+  // 1. Product truth first. Nothing binding, no generation — and no cap consumed.
+  //    A first-run workspace (FR-GI-S-003) has no claim set at all, so facts are
+  //    read here too rather than letting the pre-flight refuse what the prompt
+  //    assembler would happily have bound.
+  const [claimSet, productFacts] = await Promise.all([
+    getClaimSet(workspaceId),
+    getProductFacts(workspaceId),
+  ]);
+  if (!claimSet && !hasProductFacts(productFacts)) throw new MissingClaimSetError();
 
   const docs = includeDocs ? await listDocs(workspaceId) : [];
   const systemPrompt = assembleSystemPrompt(role, {
     claimSet,
+    productFacts,
     docs: docs.map((doc) => ({
       title: doc.title,
       category: doc.category,
@@ -128,7 +149,7 @@ export async function runGeneration(options: {
       p_error: null,
     });
 
-    return { runId: runId as string, claimSet, result };
+    return { runId: runId as string, claimSet, productFacts, result };
   } catch (error) {
     await supabase.rpc("finish_ai_run", {
       run_id: runId,

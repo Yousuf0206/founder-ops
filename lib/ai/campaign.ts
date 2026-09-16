@@ -5,7 +5,7 @@ import { z } from "zod";
 import type { OpsSession } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/db/server";
 import { runGeneration, writeAudit } from "@/lib/ai/run";
-import { findForbiddenClaims } from "@/lib/prompts/assemble";
+import { findForbiddenViolations } from "@/lib/prompts/assemble";
 import { ForbiddenClaimError, UnparseableContentError } from "@/lib/ai/content";
 
 /** The campaign bot (FR-M). Same claim binding, same approval gate as content. */
@@ -90,7 +90,7 @@ export async function runCampaign(
     throw new UnparseableContentError();
   }
 
-  const violations = findForbiddenClaims(JSON.stringify(payload), claimSet);
+  const violations = findForbiddenViolations(JSON.stringify(payload), claimSet);
   if (violations.length > 0) {
     await writeAudit(workspaceId, "campaign.forbidden_claim_blocked", "ai_run_log", runId, {
       claims: violations,

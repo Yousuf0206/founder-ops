@@ -1,8 +1,8 @@
 ---
-description: "Task list for Lumo-Ops Core implementation"
+description: "Task list for Lumo Grow Core implementation"
 ---
 
-# Tasks: Lumo-Ops Core
+# Tasks: Lumo Grow Core
 
 > **CLOSED — superseded by Constitution v2.0.0 (2026-09-15).** This document was written
 > and built under v1.0.0, whose Principle I was "Draft, Never Auto-Publish". v2.0.0 makes

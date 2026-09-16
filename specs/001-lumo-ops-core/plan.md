@@ -1,4 +1,4 @@
-# Implementation Plan: Lumo-Ops Core
+# Implementation Plan: Lumo Grow Core
 
 > **CLOSED — superseded by Constitution v2.0.0 (2026-09-15).** This document was written
 > and built under v1.0.0, whose Principle I was "Draft, Never Auto-Publish". v2.0.0 makes
@@ -8,7 +8,7 @@
 > inherits, and what is newly missing.
 
 **Branch**: `001-lumo-ops-core` | **Date**: 2026-09-11 | **Spec**: [spec.md](./spec.md)
-**Input**: Lumo-Ops — Plan v1.0 (user-authored) + `specs/001-lumo-ops-core/spec.md`
+**Input**: Lumo Grow — Plan v1.0 (user-authored) + `specs/001-lumo-ops-core/spec.md`
 
 > HOW we build it. WHAT is in `spec.md`. Tickets in `tasks.md`.
 > Governed by `.specify/memory/constitution.md` (Lumo-Ops Constitution v1.0.0).

@@ -61,7 +61,7 @@ export default async function OpsLayout({
     <div className="mx-auto flex min-h-screen max-w-6xl flex-col px-6">
       <header className="flex items-center justify-between border-b border-line py-4">
         <div className="flex items-baseline gap-3">
-          <span className="text-sm font-semibold tracking-tight">Lumo-Ops</span>
+          <span className="text-sm font-semibold tracking-tight">Lumo Grow</span>
           <span className="text-sm text-muted">{activeWorkspace.workspaceName}</span>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-3 text-sm text-muted">

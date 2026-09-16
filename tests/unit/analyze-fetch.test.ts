@@ -9,6 +9,7 @@ import {
   RobotsDisallowedError,
   robotsAllows,
   UnsafeUrlError,
+  USER_AGENT,
 } from "@/lib/analyze/fetch";
 
 /** 002 T1.3 — the server fetches user-supplied URLs, so SSRF and robots.txt are tested. */
@@ -88,7 +89,18 @@ describe("robotsAllows", () => {
   });
 
   it("prefers a group naming this bot over the wildcard group", () => {
-    const robots = "User-agent: *\nDisallow: /\n\nUser-agent: LumoOpsBot\nAllow: /";
+    const robots = "User-agent: *\nDisallow: /\n\nUser-agent: LumoGrowBot\nAllow: /";
+    expect(robotsAllows(robots, "/pricing")).toBe(true);
+  });
+
+  it("matches the group named by the user-agent we actually send", () => {
+    // guards against USER_AGENT and ROBOTS_AGENT drifting apart on a rename
+    const token = USER_AGENT.split("/")[0];
+    const robots = `User-agent: *
+Disallow: /
+
+User-agent: ${token}
+Allow: /`;
     expect(robotsAllows(robots, "/pricing")).toBe(true);
   });
 

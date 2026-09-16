@@ -17,7 +17,7 @@ const STAGES = [
  * Moves a lead through the team's own pipeline.
  *
  * "Contacted" records that a human reached out by some other means. Selecting
- * it sends nothing — Lumo-Ops has no path to a lead's inbox.
+ * it sends nothing — Lumo Grow has no path to a lead's inbox.
  */
 export function StageForm({ leadId, stage }: { leadId: string; stage: string }) {
   const [state, formAction] = useActionState<StageState, FormData>(setStageAction, {});

@@ -193,7 +193,7 @@ export async function ingestLead(
         "Message:",
         payload.message || "(empty)",
         "",
-        "No reply has been sent. Lumo-Ops does not contact leads.",
+        "No reply has been sent. Lumo Grow does not contact leads.",
       ].join("\n"),
     });
 

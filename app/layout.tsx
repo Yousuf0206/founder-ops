@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Lumo-Ops",
+  title: "Lumo Grow",
   description: "Growth operations for your apps — research, content, leads, and campaigns.",
   robots: { index: false, follow: false },
 };

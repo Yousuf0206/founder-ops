@@ -7,7 +7,7 @@ import { AuthError } from "@/lib/knowledge/repo";
 import { PLATFORM_NORMS, SOCIAL_PLATFORMS } from "@/lib/content/platforms";
 import { createSupabaseServerClient } from "@/lib/db/server";
 import { runGeneration, writeAudit } from "@/lib/ai/run";
-import { findForbiddenClaims } from "@/lib/prompts/assemble";
+import { findForbiddenViolations } from "@/lib/prompts/assemble";
 
 /**
  * The content bot (FR-C). Produces a structured draft and files it as
@@ -164,7 +164,7 @@ export async function runContentPackage(
   if (input.platforms.some((platform) => !drafts[platform])) throw new UnparseableContentError();
 
   // T1.8: every platform's asset is scanned; one violation blocks the package.
-  const violations = findForbiddenClaims(
+  const violations = findForbiddenViolations(
     JSON.stringify(input.platforms.map((platform) => drafts[platform])),
     claimSet,
   );
@@ -246,7 +246,7 @@ export async function runContent(
 
   // SC-005 / NFR-004: a forbidden claim in output is a defect. Catch it before
   // the draft can reach a reviewer, who might otherwise approve it.
-  const violations = findForbiddenClaims(JSON.stringify(payload), claimSet);
+  const violations = findForbiddenViolations(JSON.stringify(payload), claimSet);
   if (violations.length > 0) {
     await writeAudit(workspaceId, "content.forbidden_claim_blocked", "ai_run_log", runId, {
       claims: violations,

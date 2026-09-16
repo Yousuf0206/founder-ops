@@ -9,6 +9,7 @@ import { ProviderError } from "@/lib/ai/provider";
 import { UnparseableOutputError } from "@/lib/ai/research";
 import { FetchFailedError, RobotsDisallowedError, UnsafeUrlError } from "@/lib/analyze/fetch";
 import { NoEvidencedIdeasError } from "@/lib/strategy/run";
+import { NoUsableHurdlesError, ThinPageError } from "@/lib/growth/analyze";
 
 /**
  * 422 — the request was understood but refused on its content: an unsafe or
@@ -18,7 +19,13 @@ function refusal(error: unknown): NextResponse | null {
   if (
     error instanceof UnsafeUrlError ||
     error instanceof RobotsDisallowedError ||
-    error instanceof NoEvidencedIdeasError
+    error instanceof NoEvidencedIdeasError ||
+    // Plan §7: a thin or JS-heavy page gets an honest "limited scan" message,
+    // not a 500 the user can do nothing with.
+    error instanceof ThinPageError ||
+    // FR-GI-X-003: the whole hurdle list was dropped by the forbidden-pattern
+    // floor. Nothing about the request was malformed, so this is a refusal.
+    error instanceof NoUsableHurdlesError
   ) {
     return NextResponse.json({ error: error.message }, { status: 422 });
   }
@@ -34,7 +41,11 @@ function refusal(error: unknown): NextResponse | null {
  * Each of these is a state the user can act on, so each gets its own status and
  * its own message rather than collapsing into a 500:
  *   401/403 — not signed in, or a viewer
- *   409     — no claim set: fix the knowledge base
+ *   409     — nothing binds the prompt: no approved claims AND no extracted
+ *             product facts. After v3.0.0 (T-A7) this no longer fires on a
+ *             normal first run — extraction seeds the facts — so a 409 here now
+ *             means extraction genuinely found nothing, or the workspace predates
+ *             it. A 409 on the Growth Instant path is SC-02 regressing.
  *   429     — daily cap reached: wait, or raise the cap
  *   502     — provider failed
  *   503     — provider not configured on the server

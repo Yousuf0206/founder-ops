@@ -67,7 +67,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
         {lead.notified_at
           ? `Team notified ${new Date(lead.notified_at).toLocaleString()}. `
           : ""}
-        No message has been sent to this person, and Lumo-Ops cannot send one.
+        No message has been sent to this person, and Lumo Grow cannot send one.
       </p>
 
       {/* 002 T4.2 / US9 AC4: tasks for a person to act on — the app never contacts the lead. */}

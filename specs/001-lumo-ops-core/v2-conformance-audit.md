@@ -126,7 +126,7 @@ No v1 spec, schema, or code covers any of these:
 - **Knowledge update with human confirm** — v1 knowledge CRUD is fully manual; v2 has the
   agent proposing updates that a human confirms.
 - **Dogfood check (Principle X)** — no criterion anywhere asserts Lumo Learn runs as a
-  workspace on Lumo-Ops.
+  workspace on Lumo Grow.
 
 ---
 

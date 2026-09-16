@@ -1,4 +1,4 @@
-# Feature Specification: Lumo-Ops Core
+# Feature Specification: Lumo Grow Core
 
 > **CLOSED — superseded by Constitution v2.0.0 (2026-09-15).** This document was written
 > and built under v1.0.0, whose Principle I was "Draft, Never Auto-Publish". v2.0.0 makes
@@ -10,7 +10,7 @@
 **Feature Branch**: `001-lumo-ops-core`
 **Created**: 2026-09-11
 **Status**: Closed — superseded by Constitution v2.0.0
-**Input**: Lumo-Ops — Specify v1.0 (user-authored, pasted verbatim into session)
+**Input**: Lumo Grow — Specify v1.0 (user-authored, pasted verbatim into session)
 
 > Governed by `.specify/memory/constitution.md` (Lumo-Ops Constitution v1.0.0).
 > WHAT we build. HOW is in `plan.md`. Tickets in `tasks.md`.
