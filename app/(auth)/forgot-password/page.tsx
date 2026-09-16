@@ -2,7 +2,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { createSupabaseServerClient } from "@/lib/db/server";
-import { requestOrigin } from "@/lib/http/origin";
+import { isEmailConfigured } from "@/lib/email/notify";
+import { sendPasswordResetEmail } from "@/lib/email/password-reset";
+import { trustedSiteOrigin } from "@/lib/http/origin";
 import { firstIssue, forgotPasswordSchema } from "@/lib/validation/auth";
 
 /**
@@ -26,8 +28,23 @@ export default async function ForgotPasswordPage({
     const parsed = forgotPasswordSchema.safeParse({ email: formData.get("email") });
     if (!parsed.success) redirect(back(firstIssue(parsed.error)));
 
+    const origin = await trustedSiteOrigin();
+
+    // Preferred: our own email via Resend, with a link that works on any device
+    // regardless of Supabase dashboard settings. Same response whether or not
+    // the account exists.
+    if (isEmailConfigured()) {
+      try {
+        await sendPasswordResetEmail(parsed.data.email, origin);
+      } catch (error) {
+        console.error("Password reset email failed:", error);
+        redirect(back("We couldn't send the email right now. Try again in a few minutes."));
+      }
+      redirect("/forgot-password?sent=1");
+    }
+
+    // Fallback until Resend is configured: Supabase's own mailer.
     const supabase = await createSupabaseServerClient();
-    const origin = await requestOrigin();
     const { error } = await supabase.auth.resetPasswordForEmail(parsed.data.email, {
       redirectTo: `${origin}/auth/callback?next=${encodeURIComponent("/reset-password")}`,
     });
