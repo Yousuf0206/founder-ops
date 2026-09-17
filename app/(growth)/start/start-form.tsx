@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { startAnalysisAction, type StartState } from "./actions";
@@ -22,6 +22,10 @@ const GOALS = [
 
 export function StartForm() {
   const [state, formAction] = useActionState<StartState, FormData>(startAnalysisAction, {});
+  // "Something else" has to be able to say what else, or the goal is a menu
+  // with an unusable last option. The field appears only when chosen, so the
+  // screen is still one required field wide.
+  const [goal, setGoal] = useState("");
 
   return (
     <form action={formAction} className="mt-8 flex flex-col gap-5">
@@ -51,7 +55,8 @@ export function StartForm() {
         <select
           id="goal"
           name="goal"
-          defaultValue=""
+          value={goal}
+          onChange={(event) => setGoal(event.target.value)}
           className="w-full rounded-md border border-line bg-surface px-3 py-2.5 text-base sm:text-sm"
         >
           {GOALS.map((goal) => (
@@ -61,6 +66,23 @@ export function StartForm() {
           ))}
         </select>
       </div>
+
+      {goal === "other" && (
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="goal_note" className="text-sm font-medium">
+            What are you after? <span className="font-normal text-muted">(optional)</span>
+          </label>
+          <input
+            id="goal_note"
+            name="goal_note"
+            type="text"
+            maxLength={120}
+            placeholder="e.g. get 20 schools to trial it this term"
+            className="w-full rounded-md border border-line bg-surface px-3 py-2.5 text-base sm:text-sm"
+          />
+          <p className="text-sm text-muted">We write to this, so a phrase is plenty.</p>
+        </div>
+      )}
 
       {state.error && (
         <p role="alert" className="text-sm text-red-600">

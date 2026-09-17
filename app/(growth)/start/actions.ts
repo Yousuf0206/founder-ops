@@ -46,10 +46,18 @@ function messageFor(error: unknown): string {
     return error.message;
   }
   if (error instanceof MissingClaimSetError) {
-    // After T-A7 this should be unreachable from Start: extraction seeds the
-    // facts that bind the prompt. If it fires, SC-02 has regressed.
+    // Unreachable from Start: the analysis run is exempt from the claim gate
+    // precisely because it is what seeds the facts (KnowledgeContext.allowUnbound).
+    // If it fires, SC-02 has regressed — and the user must be told the truth about
+    // it. This branch used to return "could not read enough from that page", which
+    // sent every affected founder off to re-read a page that had in fact been read
+    // perfectly well, and hid a first-run-blocking bug behind a content complaint.
+    // Never describe a gate refusal as a fetch problem.
     console.error("SC-02 regression: claim gate refused a Growth Instant run", error);
-    return "We could not read enough from that page to work with. Try your home page.";
+    return (
+      "We read your page, but something on our side blocked the analysis. That is a "  +
+      "bug on our end, not a problem with your page — it has been logged. Try again."
+    );
   }
   if (error instanceof UnparseableOutputError) {
     return "The analysis came back unreadable. The failed run was logged — try again.";
@@ -99,7 +107,14 @@ export async function startAnalysisAction(
       const session = await getOpsSession();
       if (!session) return { error: "Your session expired. Sign in and try again." };
 
-      await runGrowthAnalysis(session, { url, goal: parseGoal(formData.get("goal")) });
+      const goal = parseGoal(formData.get("goal"));
+      await runGrowthAnalysis(session, {
+        url,
+        goal,
+        // Only meaningful for "other"; ignoring it otherwise stops a stale
+        // value from a changed dropdown reaching the prompt.
+        goalNote: goal === "other" ? String(formData.get("goal_note") ?? "") : null,
+      });
     }
   } catch (error) {
     return { error: messageFor(error) };

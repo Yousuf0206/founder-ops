@@ -192,10 +192,84 @@ describe("fetchPublicPage", () => {
   });
 });
 
+/**
+ * Extraction edge cases (P0).
+ *
+ * The dogfood failure was never extraction — lumo-learn.com yields ~7k
+ * characters cleanly — but the class of site that DOES defeat a regex
+ * extractor is the client-rendered marketing page, and that is most of them.
+ * Such a page almost always still ships correct Open Graph tags, so reading
+ * them is the difference between a dead end and a usable first result.
+ */
 describe("extractText", () => {
   it("reads a description whose attributes come in either order", () => {
     expect(
       extractText('<meta content="Either order" name="description">').description,
     ).toBe("Either order");
+  });
+
+  it("falls back to og: tags on a page whose body renders client-side", () => {
+    const spa = [
+      '<html><head>',
+      '<meta property="og:title" content="Lumo Learn">',
+      '<meta property="og:description" content="Past-paper practice">',
+      '</head><body><div id="root"></div>',
+      '<script>renderApp()</script>',
+      '</body></html>',
+    ].join("");
+
+    const result = extractText(spa);
+    expect(result.title).toBe("Lumo Learn");
+    expect(result.description).toBe("Past-paper practice");
+    // The script body is still excluded from the text — og: is a supplement
+    // to extraction, not a licence to feed the model a bundle.
+    expect(result.text).not.toContain("renderApp");
+  });
+
+  it("prefers the real tags over og: when both are present", () => {
+    const page = [
+      '<html><head><title>Real title</title>',
+      '<meta name="description" content="Real description">',
+      '<meta property="og:title" content="Social title">',
+      '<meta property="og:description" content="Social description">',
+      '</head><body><p>Body</p></body></html>',
+    ].join("");
+
+    const result = extractText(page);
+    expect(result.title).toBe("Real title");
+    expect(result.description).toBe("Real description");
+  });
+
+  it("falls back when the real tag is present but empty", () => {
+    const page =
+      '<html><head><title>   </title>' +
+      '<meta name="description" content="">' +
+      '<meta property="og:title" content="Lumo Learn">' +
+      '<meta property="og:description" content="Past-paper practice">' +
+      '</head><body></body></html>';
+
+    const result = extractText(page);
+    expect(result.title).toBe("Lumo Learn");
+    expect(result.description).toBe("Past-paper practice");
+  });
+
+  it("decodes entities in og: values like any other text", () => {
+    expect(
+      extractText('<meta property="og:description" content="Notes &amp; flashcards">')
+        .description,
+    ).toBe("Notes & flashcards");
+  });
+
+  it("returns empty strings rather than throwing on a page with no head", () => {
+    expect(extractText("<html><body>Hello</body></html>")).toMatchObject({
+      title: "",
+      description: "",
+      text: "Hello",
+    });
+  });
+
+  it("keeps block boundaries so joined words do not become one token", () => {
+    // "PricingSign in" would read to the model as a single unknown word.
+    expect(extractText("<h1>Pricing</h1><p>Sign in</p>").text).toBe("Pricing\nSign in");
   });
 });

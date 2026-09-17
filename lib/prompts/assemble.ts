@@ -84,6 +84,29 @@ export type KnowledgeContext = {
    * approved claim exists yet; always injected when present.
    */
   productFacts?: ProductFacts | null;
+  /**
+   * The bootstrap exemption (T-A7 follow-up; FR-GI-X-004, SC-02).
+   *
+   * Exactly one run in the product has no source of product truth to bind to,
+   * because it is the run that CREATES one: the Growth Instant extraction that
+   * reads the product's own public page. Requiring it to be bound is circular —
+   * facts come from the analysis, the analysis was refused for having no facts —
+   * and that circle is why a first run could never succeed.
+   *
+   * This is narrow by construction, not by convention:
+   *   - the prompt's material is the page text the caller just fetched, carried
+   *     in the user message, so the run is still bound to product truth — the
+   *     product's own words rather than a stored row;
+   *   - the output is descriptive (what the page says, what is missing), never
+   *     an assertion of product fact, and the approved-claims section below
+   *     still tells the model it may assert none;
+   *   - the global forbidden floor is injected exactly as on every other prompt;
+   *   - post-generation the caller still drops anything that trips it.
+   *
+   * Only lib/growth/analyze.ts sets it. Every other generation path in the
+   * product reaches a provider only when claims or facts already exist.
+   */
+  allowUnbound?: boolean;
 };
 
 function bulletList(items: string[]): string {
@@ -99,16 +122,19 @@ export function assembleSystemPrompt(
   role: string,
   context: KnowledgeContext,
 ): string {
-  const { claimSet, docs = [], productFacts = null } = context;
+  const { claimSet, docs = [], productFacts = null, allowUnbound = false } = context;
 
   // The guard that makes Constitution III structural rather than procedural.
   // v3.0.0: product facts are an accepted binding source (Constitution I
   // carve-out), so the refusal fires only when BOTH sources are empty.
+  // The bootstrap run (see `allowUnbound`) is the one documented exemption.
   const boundByFacts = hasProductFacts(productFacts);
-  if (!claimSet) {
-    if (!boundByFacts) throw new MissingClaimSetError();
-  } else if (!hasApprovedClaims(claimSet) && !boundByFacts) {
-    throw new EmptyApprovedClaimsError();
+  if (!allowUnbound) {
+    if (!claimSet) {
+      if (!boundByFacts) throw new MissingClaimSetError();
+    } else if (!hasApprovedClaims(claimSet) && !boundByFacts) {
+      throw new EmptyApprovedClaimsError();
+    }
   }
 
   const sections: string[] = [role.trim()];

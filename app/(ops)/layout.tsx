@@ -17,8 +17,14 @@ import { switchWorkspaceAction } from "./workspace-actions";
  * an empty shell. (Constitution VII)
  */
 
+/**
+ * P1/SC-06: these are the ADVANCED destinations, not the product's main nav.
+ * The five primary ones — Start, Hurdles, Pack, Publish, Next — live in
+ * app/(growth)/layout.tsx and nowhere else. Nothing here may be promoted to
+ * that list.
+ */
 const NAV = [
-  { href: "/", label: "Home" },
+  { href: "/advanced", label: "Overview" },
   { href: "/knowledge", label: "Knowledge" },
   { href: "/analyze", label: "Analyze" },
   { href: "/research", label: "Research" },
@@ -61,7 +67,10 @@ export default async function OpsLayout({
     <div className="mx-auto flex min-h-screen max-w-6xl flex-col px-6">
       <header className="flex items-center justify-between border-b border-line py-4">
         <div className="flex items-baseline gap-3">
-          <span className="text-sm font-semibold tracking-tight">Lumo Grow</span>
+          {/* The way back to the product. Advanced is a detour from Start, not a rival home. */}
+          <Link href="/start" className="text-sm font-semibold tracking-tight hover:text-ink">
+            Lumo Grow
+          </Link>
           <span className="text-sm text-muted">{activeWorkspace.workspaceName}</span>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-3 text-sm text-muted">

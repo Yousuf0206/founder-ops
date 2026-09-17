@@ -140,3 +140,63 @@ requirement already in `spec.md`.
 | 6 | Meta "already available" trigger | T-C6 |
 
 Decisions 1 and 3 shape the schema; settle them before Phase B opens.
+
+---
+
+## Work order 2026-09-17 — P0/P1/P2
+
+### Open decisions, settled
+
+| # | Decision | Settled as |
+|---|---|---|
+| 1 | Reuse `content_drafts` for pack posts | **Reuse.** `content_drafts.source = 'growth_pack'` + `growth_pack_id` (migration 0017). Approval, the forbidden check at publish, the daily cap, the publish job and its receipt already exist for `content_drafts`; a parallel table would have needed its own copy of each, and the copies would have drifted. |
+| 2 | Fate of the ~15 `(ops)` routes | **Kept, demoted.** They stay in full under Advanced. The old `/` ops console moved to `/advanced`; `/` is now a router into `/start`. Their nav is labelled Advanced destinations and may not be promoted (SC-06). |
+| 5 | Goal `other` — free text or inert label | **Free text, injected.** `analyze_runs.goal_note`, ≤120 chars, shown only when `other` is chosen, and written into both the analyze prompt and the pack prompt. Stored-but-ignored was explicitly rejected. |
+| 6 | Meta "already available" trigger | **`LIVE_PUBLISH_PLATFORMS`** in `lib/connectors/registry.ts`, via `isPublishablePlatform()`. Instagram becomes publishable the day it joins that list and not before — there is no second flag to forget. |
+
+Decisions 3 (workspace select) and 4 (default cap) were already settled in code and are unchanged.
+
+### P0 — why the dogfood URL failed
+
+Not extraction. `https://lumo-learn.com` fetches cleanly and yields ~7,100 characters of
+readable text through `extractText`, and its robots.txt allows `/`.
+
+The failure was a **bootstrap deadlock**. `runGeneration` refused any prompt not bound to
+approved claims or stored `product_facts` — including the Growth Instant analysis, which is
+the run that *creates* those facts. A first run could therefore never succeed. The refusal
+(`MissingClaimSetError`) was then mapped on Start to *"We could not read enough from that
+page to work with"*, which blamed the founder's page for a gate that had never let the run
+start.
+
+Fixed by `KnowledgeContext.allowUnbound`, set by `lib/growth/analyze.ts` and nowhere else.
+The exemption is one run wide: the page text in the user message is that run's source of
+product truth, the global forbidden block is still injected, and `dropForbiddenHurdles`
+still runs on the output. Every other generation path is unchanged.
+
+Also in P0:
+
+- The thin-page check moved **before** the provider call, so an unanalysable page costs no
+  cap slot and gets its own sentence instead of a downstream schema failure.
+- `extractText` falls back to `og:title` / `og:description`, so a client-rendered marketing
+  page with an empty `<body>` is still analysable.
+- A sparse body is declared in the prompt, so the model reports "almost nothing renders
+  without JavaScript" as a hurdle rather than inventing a product to fill the gap.
+- The Start error for a gate refusal now says it is a bug on our side, and logs it.
+
+### Manual production check
+
+Run signed in, against production, after each deploy that touches this path.
+
+1. Sign in at https://lumo-ops.vercel.app/ — landing should be `/start`, not the ops console.
+2. The page must not ask for claims, knowledge, or a workspace form before the URL field.
+3. Paste `https://lumo-learn.com`, leave the goal unset, submit.
+4. Expect `/hurdles` with 3–7 hurdles naming things actually on that page.
+   - *"We could not read enough from that page"* here means the analysis was refused, not
+     that the page was thin — check `ai_run_logs` and the `analyze_runs.error` column.
+5. Press **Generate growth pack** on Hurdles. Expect `/pack` with 2–4 angles and ≥5 posts.
+6. Instagram posts must carry the draft-only badge; LinkedIn posts must not.
+7. Edit one post, save, reload — the edit persists and the post shows as `edited`.
+8. Confirm at `/advanced` that the next step is no longer "Add approved claims".
+
+Migration 0017 must be applied before steps 5–7; until then `/pack` renders its empty state
+rather than failing.

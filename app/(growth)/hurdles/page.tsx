@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { getOpsSession } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/db/server";
 import { hurdleSchema, type Hurdle } from "@/lib/growth/analyze";
+import { GeneratePack } from "../pack/generate-pack";
 
 /**
  * Hurdles — destination 2 of 5 (T-A6; FR-GI-H-001..004).
@@ -149,15 +150,13 @@ export default async function HurdlesPage() {
             ))}
           </ol>
 
-          {/* FR-GI-H-003: ONE primary CTA. An action, not a sixth destination. */}
-          <div className="mt-8 flex flex-col gap-3 border-t border-line pt-6 sm:flex-row sm:items-center">
-            <Link
-              href="/pack"
-              className="rounded-md bg-accent px-4 py-2.5 text-center text-sm font-medium text-white"
-            >
-              Generate growth pack
-            </Link>
-            <Link href="/start" className="text-sm text-muted hover:text-fg">
+          {/* FR-GI-H-003: ONE primary CTA, and it really is an action — it runs
+              the generation here and then shows the result on /pack. A link to
+              /pack would have made Pack a place you go to start work rather than
+              a place the work lands. */}
+          <div className="mt-8 flex flex-col gap-3 border-t border-line pt-6 sm:flex-row sm:items-start">
+            <GeneratePack />
+            <Link href="/start" className="text-sm text-muted hover:text-fg sm:pt-2.5">
               Analyse a different URL
             </Link>
           </div>

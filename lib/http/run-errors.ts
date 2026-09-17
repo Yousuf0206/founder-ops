@@ -10,6 +10,11 @@ import { UnparseableOutputError } from "@/lib/ai/research";
 import { FetchFailedError, RobotsDisallowedError, UnsafeUrlError } from "@/lib/analyze/fetch";
 import { NoEvidencedIdeasError } from "@/lib/strategy/run";
 import { NoUsableHurdlesError, ThinPageError } from "@/lib/growth/analyze";
+import {
+  NoAnalysisError,
+  PackForbiddenContentError,
+  UnparseablePackError,
+} from "@/lib/growth/pack";
 
 /**
  * 422 — the request was understood but refused on its content: an unsafe or
@@ -25,7 +30,13 @@ function refusal(error: unknown): NextResponse | null {
     error instanceof ThinPageError ||
     // FR-GI-X-003: the whole hurdle list was dropped by the forbidden-pattern
     // floor. Nothing about the request was malformed, so this is a refusal.
-    error instanceof NoUsableHurdlesError
+    error instanceof NoUsableHurdlesError ||
+    // Same shape as the hurdle case: the pack was written, then discarded by
+    // the forbidden check. Nothing was malformed, so it is a refusal.
+    error instanceof PackForbiddenContentError ||
+    // A pack with no analysis behind it: the request is fine, the workspace
+    // is not ready for it. The message says which step comes first.
+    error instanceof NoAnalysisError
   ) {
     return NextResponse.json({ error: error.message }, { status: 422 });
   }
@@ -70,7 +81,7 @@ export function toRunResponse(error: unknown): NextResponse {
     return NextResponse.json({ error: error.message }, { status: 503 });
   }
 
-  if (error instanceof UnparseableOutputError) {
+  if (error instanceof UnparseableOutputError || error instanceof UnparseablePackError) {
     return NextResponse.json({ error: error.message }, { status: 502 });
   }
 

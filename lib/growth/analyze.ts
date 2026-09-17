@@ -66,6 +66,12 @@ Return ONLY valid JSON matching this shape:
 }`;
 
 export const GROWTH_GOALS = ["signups", "awareness", "waitlist", "other"] as const;
+
+/**
+ * Goal `other` carries free text. The cap is short on purpose: it is a phrase
+ * describing an aim, not a brief, and the whole point of Start is one field.
+ */
+export const MAX_GOAL_NOTE = 120;
 export type GrowthGoal = (typeof GROWTH_GOALS)[number];
 
 export const hurdleSchema = z.object({
@@ -94,6 +100,26 @@ export const growthAnalysisSchema = z.object({
 
 export type GrowthAnalysis = z.infer<typeof growthAnalysisSchema>;
 export type Hurdle = z.infer<typeof hurdleSchema>;
+
+/**
+ * Below this many characters of readable page text there is nothing to analyse,
+ * and the model will either invent a product or fail the schema. Checked BEFORE
+ * the provider call so a thin page costs neither a cap slot nor 20 seconds.
+ *
+ * 200 is deliberately low: a sparse marketing page with a headline, a sentence
+ * and a button is a legitimate thing to analyse — "there is almost nothing here"
+ * is itself the most useful hurdle such a founder can be told. This floor exists
+ * only to catch pages with effectively no text at all: a bare JS shell, a login
+ * screen, a redirect stub.
+ */
+const MIN_ANALYZABLE_CHARS = 200;
+
+/**
+ * Above the floor but still sparse: enough to analyse, too little to assume the
+ * body is the whole story. The model is told so explicitly (see below) rather
+ * than left to guess.
+ */
+const SPARSE_BODY_CHARS = 600;
 
 /** Thrown when the page yields too little to produce the minimum 3 hurdles. */
 export class ThinPageError extends Error {
@@ -170,10 +196,11 @@ function extractJson(text: string): string {
  */
 export async function runGrowthAnalysis(
   session: OpsSession,
-  input: { url: string; goal?: GrowthGoal | null },
+  input: { url: string; goal?: GrowthGoal | null; goalNote?: string | null },
 ): Promise<{ analysisId: string; hurdles: Hurdle[] }> {
   const workspaceId = session.activeWorkspace.workspaceId;
   const supabase = await createSupabaseServerClient();
+  const goalNote = (input.goalNote ?? "").trim().slice(0, MAX_GOAL_NOTE);
 
   let page: FetchedPage;
   try {
@@ -187,10 +214,50 @@ export async function runGrowthAnalysis(
     throw error;
   }
 
+  // FR-GI-S-004 / NFR-GI-004: decide "unanalysable" from the page itself,
+  // before the provider call, so the user gets the honest reason rather than a
+  // downstream schema failure — and so the workspace is not charged for it.
+  // Title and meta description count: they are page text a founder wrote.
+  const analysable = [page.title, page.description, page.text]
+    .filter(Boolean)
+    .join("\n")
+    .trim();
+
+  if (analysable.length < MIN_ANALYZABLE_CHARS) {
+    await supabase.from("analyze_runs").insert({
+      workspace_id: workspaceId,
+      source_url: page.url,
+      status: "failed",
+      page_title: page.title,
+      fetched_bytes: page.bytes,
+      goal: input.goal ?? null,
+      goal_note: goalNote,
+      error: `Page yielded ${analysable.length} characters of readable text (minimum ${MIN_ANALYZABLE_CHARS}).`,
+      created_by: session.userId,
+    });
+    throw new ThinPageError(page.url);
+  }
+
   const prompt = [`Page URL: ${page.url}`];
   if (page.title) prompt.push(`Title: ${page.title}`);
   if (page.description) prompt.push(`Meta description: ${page.description}`);
   if (input.goal) prompt.push(`The founder's stated goal is: ${input.goal}.`);
+  // The locked rule: free text behind "something else" is injected into the
+  // prompt, not merely stored. A goal the analysis never sees cannot shape it.
+  if (goalNote) prompt.push(`In their own words, what they are after: ${goalNote}`);
+  // When the body rendered to almost nothing and the analysable text is mostly
+  // the title and meta description, say so. Otherwise the model fills the gap by
+  // inventing a product (Constitution II), and "search engines and visitors see
+  // almost nothing without JavaScript" is a real hurdle worth naming out loud.
+  if (page.text.trim().length < SPARSE_BODY_CHARS) {
+    prompt.push(
+      "",
+      "NOTE: this page served very little text without JavaScript — what follows may " +
+        "be most of what a search engine or a link preview sees. Report that as a " +
+        "hurdle. Do not assume features that are not shown here.",
+    );
+  }
+
   prompt.push("", "<page_text>", page.text || "(no readable text)", "</page_text>");
 
   const { runId, claimSet, result } = await runGeneration({
@@ -201,6 +268,13 @@ export async function runGrowthAnalysis(
     jsonMode: true,
     // A first run has no knowledge docs; skipping the read keeps the hot path short.
     includeDocs: false,
+    // THE fix for SC-02. This run is what CREATES the workspace product facts,
+    // so requiring facts to exist before it made a first run impossible — and did:
+    // the refusal surfaced on Start as a misleading "could not read enough from
+    // that page". The page text in `userPrompt` is this run's source of product
+    // truth; the global forbidden floor and dropForbiddenHurdles below are
+    // unchanged. See KnowledgeContext.allowUnbound.
+    allowUnbound: true,
   });
 
   let parsed: GrowthAnalysis;
@@ -214,12 +288,15 @@ export async function runGrowthAnalysis(
       page_title: page.title,
       fetched_bytes: page.bytes,
       goal: input.goal ?? null,
+      goal_note: goalNote,
       error: "Model output could not be parsed as the expected hurdles shape.",
       run_id: runId,
       created_by: session.userId,
     });
-    // A thin page is the common cause and has its own honest message (plan §7).
-    if ((page.text?.trim().length ?? 0) < 200) throw new ThinPageError(page.url);
+    // A thin page used to be re-diagnosed here, after the model had already been
+    // paid for. It is now caught before the call (MIN_ANALYZABLE_CHARS above), so
+    // reaching this point means the page had plenty to read and the model still
+    // returned something unusable — which is exactly what this error says.
     throw new UnparseableOutputError(result.text);
   }
 
@@ -243,6 +320,7 @@ export async function runGrowthAnalysis(
       page_title: page.title,
       fetched_bytes: page.bytes,
       goal: input.goal ?? null,
+      goal_note: goalNote,
       error: "Every hurdle in the analysis tripped a forbidden-content pattern.",
       run_id: runId,
       created_by: session.userId,
@@ -259,6 +337,7 @@ export async function runGrowthAnalysis(
       page_title: page.title,
       fetched_bytes: page.bytes,
       goal: input.goal ?? null,
+      goal_note: goalNote,
       hurdles: kept,
       product_summary: parsed.product_facts.tagline,
       unknowns: parsed.product_facts.unknowns,

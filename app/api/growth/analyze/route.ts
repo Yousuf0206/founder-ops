@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 
 import { requireWriter } from "@/lib/knowledge/repo";
-import { runGrowthAnalysis, GROWTH_GOALS } from "@/lib/growth/analyze";
+import { runGrowthAnalysis, GROWTH_GOALS, MAX_GOAL_NOTE } from "@/lib/growth/analyze";
 import { toRunResponse } from "@/lib/http/run-errors";
 import { formatIssues } from "@/lib/validation/knowledge";
 
@@ -22,6 +22,8 @@ const bodySchema = z.object({
     .max(2000, "That URL is too long."),
   // FR-GI-S-002: optional. An absent goal must never block the run.
   goal: z.enum(GROWTH_GOALS).nullish(),
+  // Free text behind goal "other". Bounded here and again in the column.
+  goal_note: z.string().trim().max(MAX_GOAL_NOTE, "That is too long — keep it to a phrase.").nullish(),
 });
 
 export async function POST(request: NextRequest) {
@@ -41,6 +43,7 @@ export async function POST(request: NextRequest) {
     const { analysisId, hurdles } = await runGrowthAnalysis(session, {
       url: parsed.data.url,
       goal: parsed.data.goal ?? null,
+      goalNote: parsed.data.goal === "other" ? (parsed.data.goal_note ?? null) : null,
     });
 
     return NextResponse.json({ analysisId, hurdles }, { status: 201 });

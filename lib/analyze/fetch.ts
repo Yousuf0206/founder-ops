@@ -375,14 +375,38 @@ function decodeEntities(value: string): string {
     });
 }
 
-export function extractText(html: string): { title: string; description: string; text: string } {
-  const title = decodeEntities(html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] ?? "").trim();
+/**
+ * Reads one `<meta>` value, accepting either attribute order.
+ *
+ * `kind` is "name" for standard metadata and "property" for Open Graph, which
+ * uses `property="og:title"` rather than `name=`.
+ */
+function metaContent(html: string, kind: "name" | "property", key: string): string {
+  const k = escapeRegex(key);
+  const value =
+    html.match(
+      new RegExp(`<meta[^>]+${kind}=["']${k}["'][^>]*content=["']([^"']*)["']`, "i"),
+    )?.[1] ??
+    html.match(
+      new RegExp(`<meta[^>]+content=["']([^"']*)["'][^>]*${kind}=["']${k}["']`, "i"),
+    )?.[1] ??
+    "";
+  return decodeEntities(value).trim();
+}
 
-  const description = decodeEntities(
-    html.match(/<meta[^>]+name=["']description["'][^>]*content=["']([^"']*)["']/i)?.[1] ??
-      html.match(/<meta[^>]+content=["']([^"']*)["'][^>]*name=["']description["']/i)?.[1] ??
-      "",
-  ).trim();
+export function extractText(html: string): { title: string; description: string; text: string } {
+  // Open Graph is the fallback, not the primary, for both fields. A client-
+  // rendered marketing site routinely ships correct og: tags above an empty
+  // <body>, and those tags are the founder's own words about the product — so
+  // reading them is the difference between "we could not read your page" and a
+  // real result for a large and perfectly ordinary class of sites.
+  const title =
+    decodeEntities(html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] ?? "").trim() ||
+    metaContent(html, "property", "og:title");
+
+  const description =
+    metaContent(html, "name", "description") ||
+    metaContent(html, "property", "og:description");
 
   const text = decodeEntities(
     html

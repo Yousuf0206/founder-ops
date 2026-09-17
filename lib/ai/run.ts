@@ -22,7 +22,9 @@ import {
  * Order matters and is deliberate:
  *   1. a binding source of product truth must exist → refuse before spending
  *      anything. v3.0.0 (T-A7): approved claims OR auto-extracted product facts
- *      satisfy this; neither one present is still a refusal.
+ *      satisfy this; neither one present is still a refusal. The single
+ *      exception is the bootstrap extraction run that CREATES the facts — see
+ *      `allowUnbound` below and the long note in lib/prompts/assemble.ts.
  *   2. reserve a slot against the cap → transactional, in the database
  *   3. call the provider
  *   4. close the run out, success or failure
@@ -90,8 +92,22 @@ export async function runGeneration(options: {
   userPrompt: string;
   jsonMode?: boolean;
   includeDocs?: boolean;
+  /**
+   * Bootstrap runs only (lib/growth/analyze.ts). Skips the product-truth
+   * pre-flight for the one run whose own output is what satisfies it.
+   * Documented in full on `KnowledgeContext.allowUnbound`.
+   */
+  allowUnbound?: boolean;
 }): Promise<RunContext> {
-  const { session, action, role, userPrompt, jsonMode, includeDocs = true } = options;
+  const {
+    session,
+    action,
+    role,
+    userPrompt,
+    jsonMode,
+    includeDocs = true,
+    allowUnbound = false,
+  } = options;
   const workspaceId = session.activeWorkspace.workspaceId;
   const supabase = await createSupabaseServerClient();
 
@@ -105,12 +121,15 @@ export async function runGeneration(options: {
     getClaimSet(workspaceId),
     getProductFacts(workspaceId),
   ]);
-  if (!claimSet && !hasProductFacts(productFacts)) throw new MissingClaimSetError();
+  if (!allowUnbound && !claimSet && !hasProductFacts(productFacts)) {
+    throw new MissingClaimSetError();
+  }
 
   const docs = includeDocs ? await listDocs(workspaceId) : [];
   const systemPrompt = assembleSystemPrompt(role, {
     claimSet,
     productFacts,
+    allowUnbound,
     docs: docs.map((doc) => ({
       title: doc.title,
       category: doc.category,

@@ -102,6 +102,72 @@ describe("assembleSystemPrompt without a claim set (T-A7)", () => {
   });
 });
 
+/**
+ * The bootstrap deadlock (P0).
+ *
+ * Every other generation in the product must be bound to approved claims or to
+ * stored product facts. The analysis that CREATES those facts cannot be — and
+ * requiring it to be made a first run impossible: the gate refused, and Start
+ * reported the refusal as "we could not read enough from that page", so the
+ * founder went off to fix a page that had been read perfectly well.
+ *
+ * These tests pin both halves: the exemption exists, and it stays exactly one
+ * run wide.
+ */
+describe("the bootstrap exemption (SC-02)", () => {
+  it("builds a prompt with neither claims nor facts when allowUnbound is set", () => {
+    const prompt = assembleSystemPrompt("Role", {
+      claimSet: null,
+      productFacts: null,
+      allowUnbound: true,
+    });
+
+    expect(prompt).toContain("Role");
+    // Exempt from the gate is not exempt from the floor.
+    expect(prompt).toContain(GLOBAL_FORBIDDEN_PROMPT_BLOCK);
+    // And it is still told it may assert nothing about the product itself.
+    expect(prompt).toContain("You may not assert ANY product fact");
+  });
+
+  it("is exempt from the empty-approved-claims refusal too", () => {
+    // The shape a real first-run workspace has if a claim_sets row was seeded
+    // empty: present, but with nothing approved in it.
+    const emptyClaimSet: ClaimSet = {
+      workspace_id: "ws-1",
+      approved_claims: [],
+      forbidden_claims: [],
+      brand_voice: "",
+      updated_at: "2026-09-17T00:00:00.000Z",
+    };
+
+    expect(() => assembleSystemPrompt("Role", { claimSet: emptyClaimSet })).toThrow(
+      MissingClaimSetError,
+    );
+    expect(() =>
+      assembleSystemPrompt("Role", { claimSet: emptyClaimSet, allowUnbound: true }),
+    ).not.toThrow();
+  });
+
+  it("defaults to off — the gate still binds every ordinary run", () => {
+    expect(() => assembleSystemPrompt("Role", { claimSet: null })).toThrow(MissingClaimSetError);
+    expect(() =>
+      assembleSystemPrompt("Role", { claimSet: null, allowUnbound: false }),
+    ).toThrow(MissingClaimSetError);
+  });
+
+  it("still injects real facts when the bootstrap run is a RE-analysis", () => {
+    // Second run for an established workspace: the exemption is set, but the
+    // facts that exist must still bind, not be ignored because it was set.
+    const prompt = assembleSystemPrompt("Role", {
+      claimSet: null,
+      productFacts: facts,
+      allowUnbound: true,
+    });
+    expect(prompt).toContain("Product facts (auto-extracted)");
+    expect(prompt).toContain("Lumo Learn");
+  });
+});
+
 describe("findGlobalForbidden (T-A8)", () => {
   it.each([
     ["we guarantee results in 30 days", "guaranteed-outcome"],

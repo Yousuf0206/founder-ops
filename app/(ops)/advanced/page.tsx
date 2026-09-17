@@ -2,16 +2,21 @@ import Link from "next/link";
 
 import { getOpsSession } from "@/lib/auth/session";
 import { getClaimSet } from "@/lib/knowledge/repo";
-import { hasApprovedClaims } from "@/lib/prompts/assemble";
+import { hasApprovedClaims, hasProductFacts } from "@/lib/prompts/assemble";
+import { getProductFacts } from "@/lib/facts/repo";
 import { createSupabaseServerClient } from "@/lib/db/server";
 import { platformLabel } from "@/lib/content/platforms";
-import { StatusPill } from "./status-pill";
+import { StatusPill } from "../status-pill";
 
 /**
- * Home (002 T4.6): the core loop at a glance — knowledge → analyze → ideas →
- * drafts → approve → publish → learn — with the single next step called out.
+ * The Advanced overview (002 T4.6, moved off `/` in P1).
+ *
+ * The full v2 ops loop at a glance — knowledge → analyze → ideas → drafts →
+ * approve → publish → learn. It used to be `/`, which made the deepest
+ * surface in the product also the first thing a new founder saw. It is now
+ * reached deliberately, from the Advanced link, and `/` routes to Start.
  */
-export default async function HomePage() {
+export default async function AdvancedOverviewPage() {
   const session = await getOpsSession();
   if (!session) return null; // layout gate has already redirected
 
@@ -24,6 +29,7 @@ export default async function HomePage() {
 
   const [
     claimSet,
+    productFacts,
     { data: workspace },
     { count: analyses },
     { count: ideas },
@@ -35,6 +41,7 @@ export default async function HomePage() {
     { data: latestSummary },
   ] = await Promise.all([
     getClaimSet(workspaceId),
+    getProductFacts(workspaceId),
     supabase.from("workspaces").select("publish_mode, daily_publish_cap").eq("id", workspaceId).maybeSingle(),
     count("analyze_runs", (q) => q.eq("status", "succeeded")),
     count("strategy_ideas", (q) => q.eq("status", "proposed")),
@@ -57,7 +64,16 @@ export default async function HomePage() {
       .maybeSingle(),
   ]);
 
-  const claimsReady = Boolean(claimSet && hasApprovedClaims(claimSet));
+  // P1: "nothing generates or publishes without approved claims" stopped being
+  // true in v3.0.0 — auto-extracted product facts bind a prompt on their own
+  // (lib/prompts/assemble.ts). Leaving the old sentence as the loudest thing on
+  // the screen sent founders to a claims form they did not need, which is the
+  // wall Growth Instant exists to remove. What IS still true is that generation
+  // needs SOME source of product truth, and that approved claims are the
+  // stronger of the two — so this now reports which one is in force.
+  const factsReady = hasProductFacts(productFacts);
+  const claimsApproved = Boolean(claimSet && hasApprovedClaims(claimSet));
+  const claimsReady = claimsApproved || factsReady;
   const jobs = (recentJobs ?? []) as unknown as {
     id: string;
     draft_id: string;
@@ -69,7 +85,7 @@ export default async function HomePage() {
   const nextTopic = (latestSummary?.suggested_topics as { topic: string }[] | undefined)?.[0]?.topic;
 
   const next: { text: string; href: string } = !claimsReady
-    ? { text: "Add approved claims — nothing generates or publishes without them.", href: "/knowledge/claims" }
+    ? { text: "Paste your product URL to read your page and get your hurdles.", href: "/start" }
     : (analyses ?? 0) === 0
       ? { text: "Analyse your product page.", href: "/analyze" }
       : (ideas ?? 0) === 0 && (pendingApprovals ?? 0) === 0
@@ -97,7 +113,19 @@ export default async function HomePage() {
       </Link>
 
       <ol className="mt-6 grid gap-3 sm:grid-cols-3">
-        <Stage n={1} title="Product truth" href="/knowledge/claims" value={claimsReady ? "claims set" : "no approved claims"} warn={!claimsReady} />
+        <Stage
+          n={1}
+          title="Product truth"
+          href="/knowledge/claims"
+          value={
+            claimsApproved
+              ? "approved claims set"
+              : factsReady
+                ? "auto-extracted facts — unconfirmed"
+                : "nothing read yet"
+          }
+          warn={!claimsReady}
+        />
         <Stage n={2} title="Analyses" href="/analyze" value={`${analyses ?? 0} saved`} />
         <Stage n={3} title="Ideas" href="/strategy" value={`${ideas ?? 0} to draft`} />
         <Stage n={4} title="Approvals" href="/approvals" value={`${pendingApprovals ?? 0} waiting`} warn={(pendingApprovals ?? 0) > 0} />

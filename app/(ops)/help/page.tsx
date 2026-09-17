@@ -3,7 +3,8 @@ import Link from "next/link";
 import { callerCanApprove } from "@/lib/approvals/repo";
 import { capStatus } from "@/lib/ai/run";
 import { getClaimSet, requireSession } from "@/lib/knowledge/repo";
-import { hasApprovedClaims } from "@/lib/prompts/assemble";
+import { hasApprovedClaims, hasProductFacts } from "@/lib/prompts/assemble";
+import { getProductFacts } from "@/lib/facts/repo";
 import { createSupabaseServerClient } from "@/lib/db/server";
 
 /**
@@ -20,17 +21,23 @@ export default async function HelpPage() {
   const { role, workspaceName } = session.activeWorkspace;
   const supabase = await createSupabaseServerClient();
 
-  const [claimSet, cap, mayApprove, { data: workspace }, { data: publishedToday }] = await Promise.all([
-    getClaimSet(workspaceId),
-    capStatus(workspaceId),
-    callerCanApprove(workspaceId),
-    supabase.from("workspaces").select("plan, publish_mode, daily_publish_cap").eq("id", workspaceId).maybeSingle(),
-    supabase.rpc("publishes_used_today", { target_workspace: workspaceId }),
-  ]);
+  const [claimSet, productFacts, cap, mayApprove, { data: workspace }, { data: publishedToday }] =
+    await Promise.all([
+      getClaimSet(workspaceId),
+      getProductFacts(workspaceId),
+      capStatus(workspaceId),
+      callerCanApprove(workspaceId),
+      supabase.from("workspaces").select("plan, publish_mode, daily_publish_cap").eq("id", workspaceId).maybeSingle(),
+      supabase.rpc("publishes_used_today", { target_workspace: workspaceId }),
+    ]);
 
   const approvedCount = claimSet?.approved_claims.filter((c) => c.trim()).length ?? 0;
   const forbiddenCount = claimSet?.forbidden_claims.length ?? 0;
-  const generationReady = Boolean(claimSet && hasApprovedClaims(claimSet));
+  // v3.0.0: approved claims OR auto-extracted product facts. Help is where a
+  // reader comes when something refused, so it must state the rule the engine
+  // actually applies, not the stricter one it applied before Growth Instant.
+  const factsReady = hasProductFacts(productFacts);
+  const claimsApproved = Boolean(claimSet && hasApprovedClaims(claimSet));
 
   return (
     <div className="max-w-3xl">
@@ -56,16 +63,25 @@ export default async function HelpPage() {
                   : "may run agents; cannot approve or publish"}
             </span>
           </Row>
-          <Row label="Claim set">
-            {generationReady ? (
+          <Row label="Product truth">
+            {claimsApproved ? (
               <span>
                 {approvedCount} approved · {forbiddenCount} forbidden
               </span>
+            ) : factsReady ? (
+              <span>
+                Auto-extracted product facts, not yet confirmed · {forbiddenCount} forbidden
+                claim{forbiddenCount === 1 ? "" : "s"}.{" "}
+                <Link href="/knowledge/claims" className="underline">
+                  Approve claims
+                </Link>{" "}
+                to bind generation to your own wording instead.
+              </span>
             ) : (
               <span className="text-red-600">
-                No approved claims — generation and publishing will refuse.{" "}
-                <Link href="/knowledge/claims" className="underline">
-                  Add them
+                Nothing read yet — generation and publishing will refuse.{" "}
+                <Link href="/start" className="underline">
+                  Paste your product URL
                 </Link>
               </span>
             )}
@@ -117,7 +133,9 @@ export default async function HelpPage() {
               Knowledge
             </Link>{" "}
             holds documents and the claim set — approved claims, forbidden claims, brand voice.
-            Every prompt is built from it. With no approved claims, nothing generates or publishes.
+            Every prompt is built from it. A first run is allowed on auto-extracted product
+            facts instead, read from your own page at Start; approved claims replace them as
+            the binding source once you add any. With neither, nothing generates or publishes.
           </Step>
           <Step n={2} title="Analyze and research">
             <Link href="/analyze" className="underline">
@@ -194,8 +212,8 @@ export default async function HelpPage() {
         <h2 className="text-sm font-medium">When something stops</h2>
         <dl className="mt-3 divide-y divide-line rounded-lg border border-line bg-surface text-sm">
           <Row label="Generation refuses">
-            No approved claims. Add at least one under Knowledge. A bot that declines is
-            recoverable; one that invents is not.
+            Neither approved claims nor product facts. Paste your URL at Start, or add a claim
+            under Knowledge. A bot that declines is recoverable; one that invents is not.
           </Row>
           <Row label="A post is blocked">
             The daily publish cap was reached, the account was disconnected, the mode changed to
