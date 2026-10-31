@@ -80,9 +80,9 @@ export async function sendPasswordResetEmail(
   const { error: sendError } = await resend.emails.send({
     from: process.env.NOTIFY_FROM_EMAIL!,
     to: [email],
-    subject: "Reset your Founder Ops password",
+    subject: "Reset your Lumo Grow password",
     text: [
-      "Someone asked to reset the password for your Founder Ops account.",
+      "Someone asked to reset the password for your Lumo Grow account.",
       "",
       `Choose a new password: ${url}`,
       "",
@@ -90,8 +90,8 @@ export async function sendPasswordResetEmail(
       "If you did not request this, ignore this email. Your password will not change.",
     ].join("\n"),
     html: [
-      "<h2>Reset your Founder Ops password</h2>",
-      "<p>Someone asked to reset the password for your Founder Ops account.</p>",
+      "<h2>Reset your Lumo Grow password</h2>",
+      "<p>Someone asked to reset the password for your Lumo Grow account.</p>",
       `<p><a href="${escapeHtml(url)}">Choose a new password</a></p>`,
       "<p>The link expires in one hour and can only be used once.</p>",
       "<p>If you did not request this, ignore this email. Your password will not change.</p>",

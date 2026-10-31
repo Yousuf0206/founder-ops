@@ -242,7 +242,7 @@ otp_expiry = 3600
 # which requires the code-verifier cookie to survive the round trip through the
 # mail client. `token_hash` carries no such requirement.
 [auth.email.template.magic_link]
-subject = "Sign in to Founder Ops"
+subject = "Sign in to Lumo Grow"
 content_path = "./supabase/templates/magic_link.html"
 
 # Password reset uses token_hash too, so the link works on any device or
@@ -250,7 +250,7 @@ content_path = "./supabase/templates/magic_link.html"
 # forwards to /reset-password. Mirror this in the hosted project's dashboard
 # (Authentication → Emails → Reset Password); this file only applies locally.
 [auth.email.template.recovery]
-subject = "Reset your Founder Ops password"
+subject = "Reset your Lumo Grow password"
 content_path = "./supabase/templates/recovery.html"
 
 # Uncomment to customize email template
