@@ -40,3 +40,5 @@ Thumbs.db
 # local agent/tool state — machine-specific, not source
 .claude-flow/
 .swarm/
+
+.vercel
