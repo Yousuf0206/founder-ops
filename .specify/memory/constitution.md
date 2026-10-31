@@ -195,6 +195,6 @@ bump and a dated entry below.
   added as Principle X. Any v1-era code or spec that hard-refuses all publishing must be
   revisited against Principles III–V.
 - **1.1.0 — 2026-09-15:** Principle V changed from "Team-Only" to "Open Sign-Up, Isolated
-  Workspaces". Founder Ops is a SaaS for any app, not an internal team tool: anyone can
+  Workspaces". The product is a SaaS for any app, not an internal team tool: anyone can
   sign up and create workspaces. Workspace isolation via RLS is unchanged. Supersedes the
   "workspace creation is a seed/admin action" part of ADR-0001.
