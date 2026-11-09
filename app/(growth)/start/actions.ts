@@ -23,7 +23,7 @@ import { FetchFailedError, RobotsDisallowedError, UnsafeUrlError } from "@/lib/a
 import { UnparseableOutputError } from "@/lib/ai/research";
 import { CapReachedError, ProviderNotConfiguredError } from "@/lib/ai/run";
 import { MissingClaimSetError } from "@/lib/prompts/assemble";
-import { ProviderError } from "@/lib/ai/provider";
+import { ProviderError, providerFailureMessage } from "@/lib/ai/provider";
 
 export type StartState = { error?: string };
 
@@ -63,7 +63,7 @@ function messageFor(error: unknown): string {
     return "The analysis came back unreadable. The failed run was logged — try again.";
   }
   if (error instanceof ProviderError) {
-    return "The AI provider did not respond. Try again in a moment.";
+    return providerFailureMessage(error);
   }
 
   console.error(error);

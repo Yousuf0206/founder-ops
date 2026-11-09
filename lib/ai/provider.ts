@@ -25,10 +25,24 @@ export class ProviderError extends Error {
   constructor(
     message: string,
     readonly retriable: boolean,
+    /** "config": our credentials or settings are wrong; retrying cannot help. */
+    readonly kind: "config" | "upstream" = "upstream",
   ) {
     super(message);
     this.name = "ProviderError";
   }
+}
+
+/**
+ * The user-facing sentence for a provider failure (SC-08). Logged here because
+ * these are returned as form state, so nothing else reaches the runtime logs.
+ */
+export function providerFailureMessage(error: ProviderError): string {
+  console.error(`AI provider failure (${error.kind}):`, error.message);
+  return error.kind === "config"
+    ? "AI is not configured correctly on our side, so nothing was generated. " +
+        "This is a configuration problem, not a problem with your page."
+    : "The AI provider did not respond. Try again in a moment.";
 }
 
 function baseUrlFor(provider: string): string {
@@ -43,13 +57,14 @@ function baseUrlFor(provider: string): string {
       throw new ProviderError(
         `Unknown AI_PROVIDER "${provider}". Use openrouter, groq, or openai-compatible.`,
         false,
+        "config",
       );
   }
 }
 
 function requireEnv(name: string): string {
   const value = process.env[name];
-  if (!value) throw new ProviderError(`Missing environment variable ${name}.`, false);
+  if (!value) throw new ProviderError(`Missing environment variable ${name}.`, false, "config");
   return value;
 }
 
@@ -98,6 +113,8 @@ export async function generate(
       throw new ProviderError(
         `Provider returned ${response.status}. ${detail.slice(0, 300)}`,
         response.status >= 500 || response.status === 429,
+        // Rejected key, no credit, or no access to the model.
+        [401, 402, 403].includes(response.status) ? "config" : "upstream",
       );
     }
 

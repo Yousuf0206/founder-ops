@@ -7,7 +7,7 @@ import { getOpsSession } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/db/server";
 import { canWrite } from "@/lib/auth/session";
 import { CapReachedError, ProviderNotConfiguredError } from "@/lib/ai/run";
-import { ProviderError } from "@/lib/ai/provider";
+import { ProviderError, providerFailureMessage } from "@/lib/ai/provider";
 import { MissingClaimSetError } from "@/lib/prompts/assemble";
 import { AuthError } from "@/lib/knowledge/repo";
 import {
@@ -44,7 +44,7 @@ function messageFor(error: unknown): string {
     );
   }
   if (error instanceof ProviderError) {
-    return "The AI provider did not respond. Try again in a moment.";
+    return providerFailureMessage(error);
   }
 
   console.error(error);
