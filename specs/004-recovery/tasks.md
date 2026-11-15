@@ -10,7 +10,12 @@ Status vocabulary, per constitution R1 — merged code is not done:
 - `[owner]` — needs the owner at the keyboard (credentials, OAuth consent, a real run).
 
 Audit baseline: 2026-11-15, against commit `24515c3` and Vercel project `founder-ops`
-(production alias `lumo-ops.vercel.app`).
+(production alias `lumo-ops.vercel.app`). Updated the same day after the first successful
+production run (commit `fee7cf0` deployed).
+
+**Green on production so far:** SC-01, SC-02, SC-06, SC-07, SC-09, and the Phase 3 schema.
+**Still unproven:** SC-03/SC-04 (pack on a live run), SC-05 (publish), SC-08's error paths —
+the success path is proven; no failure has been observed in production yet.
 
 ## Phase 0 — Production baseline
 
@@ -23,9 +28,10 @@ Audit baseline: 2026-11-15, against commit `24515c3` and Vercel project `founder
   Presence verified; **validity** is T-0.4.
 - [x] **T-0.3** Production redeployed after the connector secrets landed (latest Production
   deployment is newer than the secrets).
-- [ ] **T-0.4** `[owner]` Verify one successful AI completion **against production** —
-  sign in and run Start on `https://lumo-learn.com`. This is the only check that proves the
-  key, not just its presence.
+- [x] **T-0.4** One successful AI completion **on production**, 2026-11-15: Start run on
+  `https://lumo-learn.com` returned hurdles. Production log line:
+  `{"event":"growth.analyze","outcome":"ok","latency_ms":7358,"run_id":"dfb5dae9-…","model":"openai/gpt-oss-120b"}`.
+  The Groq key works, not merely exists — which `/api/health` could never have told us.
 - [~] **T-0.5** Missing/invalid AI config returns a clear user-facing error, distinct from a
   provider outage — `lib/ai/run.ts` `ProviderNotConfiguredError`, mapped in
   `lib/http/run-errors.ts`.
@@ -56,9 +62,10 @@ Audit baseline: 2026-11-15, against commit `24515c3` and Vercel project `founder
 - [x] **T-2.4** No banner or help string claims nothing works without approved claims —
   `app/(ops)/help/page.tsx` and `app/(ops)/advanced/page.tsx` already say "approved claims
   **or** auto-extracted product facts".
-- [~] **T-2.5** First Instant analyze does not require Knowledge → Claims — the four
-  first-run gates were removed in spec 003 T-A7; `lib/prompts/assemble.ts` binds on
-  `product_facts`. Production proof rides with T-0.4.
+- [x] **T-2.5** First Instant analyze does not require Knowledge → Claims — proven on
+  production by the T-0.4 run, which produced hurdles with no Claims step in the path. The
+  four first-run gates were removed in spec 003 T-A7 and `lib/prompts/assemble.ts` binds on
+  `product_facts`. **SC-02 is green.**
 
 **Exit:** SC-02, SC-07.
 
@@ -67,11 +74,16 @@ Audit baseline: 2026-11-15, against commit `24515c3` and Vercel project `founder
 - [~] **T-3.1** Error taxonomy: extract / ai_config / ai_provider / auth —
   `lib/http/run-errors.ts` (422 refusals, 502 fetch, 401/403 auth, 409 unbound, 429 cap,
   separate config vs provider).
-- [~] **T-3.2** Instant analyze unbound path (page text / `product_facts`) with the
-  forbidden filter still on — `lib/growth/analyze.ts`, `findForbiddenClaims()`.
+- [x] **T-3.2** Instant analyze unbound path (page text / `product_facts`) with the
+  forbidden filter still on — `lib/growth/analyze.ts`, `findForbiddenClaims()`. Exercised by
+  the T-0.4 run: it bound and returned a full hurdle list, so nothing was dropped by the
+  forbidden floor.
 - [x] **T-3.3** Goal `other` free text capped and injected into prompts —
   `GROWTH_GOALS` + `goalNote` in `app/(growth)/start/actions.ts`.
-- [ ] **T-3.4** `[owner]` Production dogfood: `https://lumo-learn.com` → hurdles list.
+- [x] **T-3.4** Production dogfood: `https://lumo-learn.com` → hurdles list, 2026-11-15.
+  Four hurdles (SC-01 wants 3–7), each with a plain-language reason and suggested actions:
+  no concrete pricing, limited social proof, unclear free-tier limits, missing privacy
+  information. 7.4s end to end against the 2-minute budget.
 - [x] **T-3.5** Migrations `0016_growth_instant_facts` and `0017_growth_pack` **are applied
   on production.** Verified via `/api/health`, which probes the production database for
   `analyze_runs.goal`, `analyze_runs.hurdles`, `publish_jobs`, `product_facts` and
@@ -113,12 +125,13 @@ Audit baseline: 2026-11-15, against commit `24515c3` and Vercel project `founder
 
 ## Phase 5 — Observability and lock
 
-- [~] **T-5.1** Structured analyze logs (run id, error class, latency, model id; no
-  secrets) — `lib/obs/log.ts`, one JSON line per attempt from both the server actions the
+- [x] **T-5.1** Structured analyze logs (run id, error class, latency, model id; no
+  secrets) — verified in production logs on 2026-11-15 (see T-0.4). `lib/obs/log.ts`, one JSON line per attempt from both the server actions the
   UI calls (`app/(growth)/start/actions.ts`, `app/(growth)/pack/actions.ts`) and their API
   twins. `error_kind` buckets failures as extract / ai_config / ai_provider / auth / cap /
   refusal, which is SC-08 made queryable.
-- [~] **T-5.2** Health/config signal for "AI configured" — `GET /api/health`
+- [x] **T-5.2** Health/config signal for "AI configured" — `GET /api/health`, live and
+  returning 200 with `migrations.applied: true`.
   (`app/api/health/route.ts`). Booleans and the model name only, never a value; 503 when AI
   or Supabase config is missing; attempts no generation, so it proves presence, not a
   working key (that is T-0.4).
