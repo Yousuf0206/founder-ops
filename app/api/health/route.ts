@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { configuredModel, isProviderConfigured } from "@/lib/ai/provider";
-import { createSupabaseServerClient } from "@/lib/db/server";
+import { createSupabaseAdminClient } from "@/lib/db/server";
 
 /**
  * GET /api/health — the configuration signal (004 T-5.2).
@@ -38,12 +38,16 @@ export const dynamic = "force-dynamic";
  * touches these tables, so without this probe the answer only appears when a
  * founder's pack fails mid-run.
  *
- * Each entry asks the database for zero rows of one column. Under RLS an
- * anonymous caller sees an empty result either way, so the signal is the error
- * code, not the data: `42P01` means the table is missing, `42703` the column,
- * `PGRST20x` that PostgREST has never heard of the relation. No row, column
- * value, count or schema detail is returned — only present/missing per
- * migration.
+ * Each entry asks the database for zero rows of one column, and the signal is
+ * the error code rather than the data: `42P01` means the table is missing,
+ * `42703` the column, `PGRST20x` that PostgREST cannot see the relation.
+ *
+ * It runs as the service role deliberately. An anonymous probe cannot tell
+ * "this table does not exist" from "this table exists and RLS says no" — the
+ * first pass reported `publish_jobs` as unknown for exactly that reason — and a
+ * health check that cannot distinguish those is not worth deploying. Reading
+ * the schema is the whole point and no row is ever fetched: `limit(0)` of one
+ * column, and only present/missing per migration leaves the endpoint.
  */
 const SCHEMA_PROBES = [
   { migration: "0009_analyze_strategy", table: "analyze_runs", column: "id" },
@@ -66,16 +70,17 @@ async function probeSchema(): Promise<{
   const unknown: string[] = [];
 
   try {
-    const supabase = await createSupabaseServerClient();
+    const supabase = createSupabaseAdminClient();
 
     await Promise.all(
       SCHEMA_PROBES.map(async (probe) => {
         const { error } = await supabase.from(probe.table).select(probe.column).limit(0);
         if (!error) return;
         if (MISSING_CODES.has(error.code ?? "")) missing.push(probe.migration);
-        // A permission or connection error says nothing about the schema, so it
-        // is reported as unknown rather than quietly counted as applied.
-        else unknown.push(probe.migration);
+        // Past RLS, a remaining error is a connection or configuration problem.
+        // It says nothing about the schema, so it is reported as unknown rather
+        // than quietly counted as applied.
+        else unknown.push(`${probe.migration} (${error.code ?? "no code"})`);
       }),
     );
   } catch {
