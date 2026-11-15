@@ -12,15 +12,19 @@ Status vocabulary, carried over from 004 — merged code is not done:
 - `[ ]` **open** — not implemented.
 - `[owner]` — needs the owner at the keyboard (a real run, a real read, credentials).
 
-Baseline: 2026-11-15, working tree on top of commit `f7f59be` ("Record the first successful
-production run"), Vercel project `founder-ops`, production alias `lumo-ops.vercel.app`.
-The subtraction work is **in the working tree, not yet committed or deployed**, so every
-UI task below is `[~]`: the local gates are green and no production deployment has served
-it. SC-05 is the exception — it was already true before this milestone and was re-checked.
+Baseline: 2026-11-15. The subtraction work is commit `cab6276` ("Cut the signed-in app to
+Start and Results"), **deployed to Production** as `dpl_5jz98jF…` on Vercel project
+`founder-ops` (alias `lumo-ops.vercel.app`, `/api/health` reports `"commit":"cab6276…"`).
+
+The UI tasks stay `[~]` deliberately. Deployed is not verified: constitution R3 defines done
+as a *non-engineer completing the path*, and nobody has yet looked at the header, read a
+hurdle or pasted a copied post. What is verified is everything a request can prove from
+outside — the routing, the redirects and the configuration.
 
 **Green on production:** SC-05 (health reports `ai.configured: true`, provider `groq`,
-model `openai/gpt-oss-120b`, migrations applied), and SC-06/SC-07's substance from 004.
-**Awaiting deploy + a live read:** SC-01, SC-02, SC-03, SC-04.
+model `openai/gpt-oss-120b`, migrations applied), SC-06/SC-07's substance from 004, FR-01
+(`/` → 307 → `/login?next=/start`), and the legacy redirects.
+**Awaiting a live read by a human:** SC-01, SC-02, SC-03, SC-04.
 
 ## Phase 0 — Audit what recovery already satisfies
 
@@ -154,7 +158,10 @@ model `openai/gpt-oss-120b`, migrations applied), and SC-06/SC-07's substance fr
 
 Nothing in this milestone is *done* until a non-engineer finishes the path on production.
 
-- [ ] **T-6.1** `[owner]` Commit and deploy the working tree to Production.
+- [x] **T-6.1** Committed as `cab6276` and deployed to Production; `/api/health` returns
+  that commit, `ai.configured: true` and `migrations.applied: true`. The signed-out probe
+  also confirms the gate still holds: `/`, `/start` and `/results` each answer
+  `307 → /login?next=/start`, so no AI work is reachable unauthenticated (R4).
 - [ ] **T-6.2** `[owner]` SC-01: sign in on production, paste `https://lumo-learn.com` on
   Start, land on Results with hurdles, having touched neither Knowledge nor Claims.
 - [ ] **T-6.3** `[owner]` SC-02: generate from that run and see ≥5 usable posts in the Posts
@@ -165,9 +172,11 @@ Nothing in this milestone is *done* until a non-engineer finishes the path on pr
 - [ ] **T-6.6** `[owner]` NFR-01: run T-6.2 through T-6.4 on a phone.
 - [ ] **T-6.7** `[owner]` R3's real test: hand the URL to a non-engineer with no
   instructions and watch whether they reach a copied post unaided.
-- [ ] **T-6.8** Confirm `/hurdles` and `/pack` redirect rather than 404 on production.
+- [x] **T-6.8** Both legacy paths redirect on production rather than 404:
+  `/hurdles` → `308` → `https://lumo-ops.vercel.app/results`, and `/pack` likewise.
 
-**Exit:** the milestone. Until T-6.2 through T-6.5 are green, R9 holds the freeze.
+**Exit:** the milestone. Until T-6.2 through T-6.5 are green, R9 holds the freeze — the code
+being live changes nothing about that, which is the whole point of the status vocabulary.
 
 ## Self-audit (constitution R10)
 
