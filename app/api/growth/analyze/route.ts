@@ -2,8 +2,10 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 
 import { requireWriter } from "@/lib/knowledge/repo";
+import { configuredModel } from "@/lib/ai/provider";
 import { runGrowthAnalysis, GROWTH_GOALS, MAX_GOAL_NOTE } from "@/lib/growth/analyze";
 import { toRunResponse } from "@/lib/http/run-errors";
+import { errorClass, errorKind, logEvent } from "@/lib/obs/log";
 import { formatIssues } from "@/lib/validation/knowledge";
 
 /**
@@ -27,8 +29,19 @@ const bodySchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  /*
+   * T-5.1 / NFR-03. This endpoint is the one the recovery milestone needs to be
+   * diagnosable from logs alone: when a founder says "it didn't work", the line
+   * written below says whether we could not read their page, could not reach a
+   * provider, or were never configured — without anyone reproducing the run.
+   * No URL, page text or hurdle copy is logged; the run id joins to the row.
+   */
+  const startedAt = Date.now();
+  let workspaceId: string | null = null;
+
   try {
     const session = await requireWriter();
+    workspaceId = session.activeWorkspace.workspaceId;
 
     const raw = await request.json().catch(() => null);
     if (raw === null) {
@@ -46,8 +59,29 @@ export async function POST(request: NextRequest) {
       goalNote: parsed.data.goal === "other" ? (parsed.data.goal_note ?? null) : null,
     });
 
+    logEvent({
+      event: "growth.analyze",
+      outcome: "ok",
+      latencyMs: Date.now() - startedAt,
+      runId: analysisId,
+      workspaceId,
+      model: configuredModel(),
+      status: 201,
+    });
+
     return NextResponse.json({ analysisId, hurdles }, { status: 201 });
   } catch (error) {
-    return toRunResponse(error);
+    const response = toRunResponse(error);
+    logEvent({
+      event: "growth.analyze",
+      outcome: "error",
+      latencyMs: Date.now() - startedAt,
+      workspaceId,
+      model: configuredModel(),
+      status: response.status,
+      errorClass: errorClass(error),
+      errorKind: errorKind(error),
+    });
+    return response;
   }
 }

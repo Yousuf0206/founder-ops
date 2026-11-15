@@ -23,7 +23,8 @@ import { FetchFailedError, RobotsDisallowedError, UnsafeUrlError } from "@/lib/a
 import { UnparseableOutputError } from "@/lib/ai/research";
 import { CapReachedError, ProviderNotConfiguredError } from "@/lib/ai/run";
 import { MissingClaimSetError } from "@/lib/prompts/assemble";
-import { ProviderError, providerFailureMessage } from "@/lib/ai/provider";
+import { ProviderError, providerFailureMessage, configuredModel } from "@/lib/ai/provider";
+import { errorClass, errorKind, logEvent } from "@/lib/obs/log";
 
 export type StartState = { error?: string };
 
@@ -83,6 +84,11 @@ export async function startAnalysisAction(
   // Calling it inside the try would let messageFor() swallow the signal and
   // report a generic failure instead of navigating.
   let signedOut = false;
+  // T-5.1: this action, not /api/growth/analyze, is what the Start form calls,
+  // so it is the path that has to be diagnosable from production logs.
+  const startedAt = Date.now();
+  let loggedWorkspaceId: string | null = null;
+  let analysisId: string | null = null;
 
   try {
     const url = String(formData.get("url") ?? "").trim();
@@ -107,16 +113,37 @@ export async function startAnalysisAction(
       const session = await getOpsSession();
       if (!session) return { error: "Your session expired. Sign in and try again." };
 
+      loggedWorkspaceId = session.activeWorkspace.workspaceId;
+
       const goal = parseGoal(formData.get("goal"));
-      await runGrowthAnalysis(session, {
+      const result = await runGrowthAnalysis(session, {
         url,
         goal,
         // Only meaningful for "other"; ignoring it otherwise stops a stale
         // value from a changed dropdown reaching the prompt.
         goalNote: goal === "other" ? String(formData.get("goal_note") ?? "") : null,
       });
+      analysisId = result.analysisId;
+
+      logEvent({
+        event: "growth.analyze",
+        outcome: "ok",
+        latencyMs: Date.now() - startedAt,
+        runId: analysisId,
+        workspaceId: loggedWorkspaceId,
+        model: configuredModel(),
+      });
     }
   } catch (error) {
+    logEvent({
+      event: "growth.analyze",
+      outcome: "error",
+      latencyMs: Date.now() - startedAt,
+      workspaceId: loggedWorkspaceId,
+      model: configuredModel(),
+      errorClass: errorClass(error),
+      errorKind: errorKind(error),
+    });
     return { error: messageFor(error) };
   }
 

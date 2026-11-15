@@ -7,7 +7,8 @@ import { getOpsSession } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/db/server";
 import { canWrite } from "@/lib/auth/session";
 import { CapReachedError, ProviderNotConfiguredError } from "@/lib/ai/run";
-import { ProviderError, providerFailureMessage } from "@/lib/ai/provider";
+import { ProviderError, providerFailureMessage, configuredModel } from "@/lib/ai/provider";
+import { errorClass, errorKind, logEvent } from "@/lib/obs/log";
 import { MissingClaimSetError } from "@/lib/prompts/assemble";
 import { AuthError } from "@/lib/knowledge/repo";
 import {
@@ -58,15 +59,37 @@ export async function generatePackAction(
 ): Promise<PackState> {
   // redirect() throws to signal, so it must happen outside the try — inside,
   // messageFor() would swallow the signal and report a generic failure.
+  const startedAt = Date.now();
+  let loggedWorkspaceId: string | null = null;
+
   try {
     const session = await getOpsSession();
     if (!session) return { error: "Your session expired. Sign in and try again." };
     if (!canWrite(session.activeWorkspace.role)) {
       return { error: "Viewers cannot generate a pack." };
     }
+    loggedWorkspaceId = session.activeWorkspace.workspaceId;
 
-    await runGrowthPack(session);
+    const { packId } = await runGrowthPack(session);
+
+    logEvent({
+      event: "growth.pack",
+      outcome: "ok",
+      latencyMs: Date.now() - startedAt,
+      runId: packId,
+      workspaceId: loggedWorkspaceId,
+      model: configuredModel(),
+    });
   } catch (error) {
+    logEvent({
+      event: "growth.pack",
+      outcome: "error",
+      latencyMs: Date.now() - startedAt,
+      workspaceId: loggedWorkspaceId,
+      model: configuredModel(),
+      errorClass: errorClass(error),
+      errorKind: errorKind(error),
+    });
     return { error: messageFor(error) };
   }
 
