@@ -142,6 +142,70 @@ guaranteed rank or revenue claims; silent publish with no mode or caps.
 - **Channels:** Official OAuth APIs where available
 - **Notify:** Email
 
+## Recovery Milestone (v5.1.0-recovery — BINDING for this milestone)
+
+Ratified by the owner on 2026-11-15, after production review. This milestone exists
+because the product over-invested in ops surface and under-delivered a reliable core
+loop **on production**. These rules are additive: Principles I–X and the v3.0.0 Product
+Experience Principles are unchanged, and where this section is stricter, it wins for the
+duration of the milestone.
+
+The core loop is: **sign in → paste a public product URL → see growth hurdles → get a
+content pack → publish at least once to a connected channel.**
+
+### R1. Live proof is the only "done"
+A task is not done when code is merged. It is done when a human completes the relevant
+step on **production**. Local green with production red is red.
+
+### R2. One primary path
+Main product chrome is only **Start → Hurdles → Pack → Publish → Next**. Full ops
+(Knowledge, Research, Strategy, Campaigns, Leads, Audit, …) lives under **Advanced**,
+never as the default home. A main-nav entry that 404s or leaves the Instant shell is a
+violation, not a cosmetic gap.
+
+### R3. Auth before Instant
+Users must be signed in before analyze/pack/publish. Do not re-open an unauthenticated
+public demo that burns AI credits.
+
+### R4. Production configuration is product work
+Missing AI keys, connector secrets, or unapplied migrations on Production are **P0
+defects**, not ops footnotes.
+
+### R5. Honest errors
+Extract failure may say the page could not be read. AI-config, AI-provider, and
+claim-gate failures must **not** be phrased as "we could not read your page."
+
+### R6. First run must not require manual claims
+Instant analyze may run on page text and/or auto-extracted product facts. Blocking first
+value on an empty approved-claims form is a bug (restates Principle I's carve-out as a
+milestone gate).
+
+### R7. Safety remains
+Forbidden-claim filtering, human approval before publish, daily caps, and no auto-outbound
+to strangers remain in force.
+
+### R8. Billing safety
+Checkout transactions that attach `user_id` must be **server-created**. Client-only price
+checkout must never be able to forge another user's identity.
+
+### R9. Explicit non-scope
+Until the core path is green on production for a sustained period (~7 days), do not build
+video generation, voice/TTS productization, lead scraping or auto-contact, or social
+networks beyond the single publish path chosen for this milestone.
+
+### R10. Self-audit after every task
+Answer in the PR or handoff: (1) Does this match this constitution? (2) Can a signed-in
+user complete the affected step on production?
+
+### Anti-patterns (refuse)
+New main-nav items; rebuilding the entire ops console; "prompt improvements" with no
+production dogfood; declaring Instant complete while `/pack` or publish is dead; scope
+into Lumo Learn (the study product).
+
+### Success standard
+The product is no longer "a password form with ambition" only when production dogfood of
+URL → hurdles → pack → one publish works without an engineer driving.
+
 ## Governance
 
 This constitution supersedes all other practices. Amendments require an explicit version
@@ -160,9 +224,19 @@ bump and a dated entry below.
 8. Is the claim wall still out of the first run?
 9. Can they publish after one approval?
 
-**Version**: 3.1.0 | **Ratified**: 2026-09-11 | **Last Amended**: 2026-09-16
+**Version**: 5.1.0-recovery | **Ratified**: 2026-09-11 | **Last Amended**: 2026-11-15
 
 ### Amendments
+
+- **5.1.0-recovery - 2026-11-15:** Added the **Recovery Milestone** section (rules R1-R10)
+  after a production review found the core loop unreliable on production while ops surface
+  kept growing. **No principle repealed.** What changes: "done" now means a human completed
+  the step on production (R1), production configuration is product work at P0 (R4), the error
+  taxonomy must distinguish extract / ai_config / ai_provider / auth (R5), and video, voice,
+  lead scraping and extra networks are frozen until the core path stays green ~7 days (R9).
+  The version jumps 3.1.0 to 5.1.0 at the owner's instruction to match the external milestone
+  numbering; 4.x was never ratified. IMMUTABLE for this milestone unless the owner amends in
+  writing.
 
 - **3.1.0 — 2026-09-16:** Renamed the product from **Lumo-Ops** to **Lumo Grow**. "Ops" was
   v2.0 heritage from the internal-operations framing; v3.0 reframed the product around
