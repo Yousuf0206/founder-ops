@@ -141,6 +141,11 @@ export async function savePackPostAction(
     hook: String(formData.get("hook") ?? "").slice(0, 2000),
     script: String(formData.get("script") ?? "").slice(0, 20000),
     cta: String(formData.get("cta") ?? "").slice(0, 500),
+    // 006: only present on platforms that need one, so an absent field must
+    // not wipe a URL saved earlier from a card that did show it.
+    ...(formData.has("image_url")
+      ? { image_url: String(formData.get("image_url") ?? "").trim().slice(0, 2000) }
+      : {}),
   };
 
   const topic = String(formData.get("topic") ?? "").trim().slice(0, 300);

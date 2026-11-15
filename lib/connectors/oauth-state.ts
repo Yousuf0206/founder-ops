@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
 import { loadTokenKey } from "@/lib/connectors/tokens";
 
@@ -38,7 +38,30 @@ type StatePayload = {
   userId: string;
   platform: string;
   exp: number;
+  /**
+   * PKCE code verifier, for platforms that require it (X). It rides in the same
+   * signed cookie as the state because it has the same lifetime and the same
+   * secrecy requirement: it must reach the callback, must not reach the
+   * platform, and is worthless once the code is exchanged. Optional, so a
+   * cookie written before PKCE existed still verifies.
+   */
+  verifier?: string;
 };
+
+/**
+ * A PKCE pair (RFC 7636, S256).
+ *
+ * The verifier stays in the signed state cookie; only its hash travels to the
+ * platform, so an intercepted authorization code cannot be exchanged by anyone
+ * who did not start the flow. X requires this even for confidential clients.
+ */
+export function createPkcePair(): { verifier: string; challenge: string } {
+  const verifier = randomBytes(32).toString("base64url");
+  return {
+    verifier,
+    challenge: createHash("sha256").update(verifier).digest("base64url"),
+  };
+}
 
 function signingKey(key?: Buffer): Buffer {
   // Derived, so the token encryption key itself is never used as an HMAC key.
@@ -56,7 +79,7 @@ function safeEqual(a: string, b: string): boolean {
 }
 
 export function createOAuthState(
-  input: { workspaceId: string; userId: string; platform: string },
+  input: { workspaceId: string; userId: string; platform: string; verifier?: string },
   options: { now?: number; key?: Buffer } = {},
 ): { state: string; cookie: string } {
   const state = randomBytes(24).toString("base64url");
@@ -74,7 +97,7 @@ export function verifyOAuthState(
   returnedState: string | null,
   expected: { userId: string; platform: string },
   options: { now?: number; key?: Buffer } = {},
-): { workspaceId: string } | null {
+): { workspaceId: string; verifier?: string } | null {
   if (!cookie || !returnedState) return null;
 
   const [body, signature, ...rest] = cookie.split(".");
@@ -92,5 +115,5 @@ export function verifyOAuthState(
   if (payload.exp < (options.now ?? Date.now())) return null;
   if (payload.userId !== expected.userId || payload.platform !== expected.platform) return null;
 
-  return { workspaceId: payload.workspaceId };
+  return { workspaceId: payload.workspaceId, verifier: payload.verifier };
 }

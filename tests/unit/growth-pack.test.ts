@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { LIVE_PUBLISH_PLATFORMS } from "@/lib/connectors/registry";
+import { LIVE_PUBLISH_PLATFORMS, requiresImage } from "@/lib/connectors/registry";
 import {
   growthPackSchema,
   isPublishablePlatform,
@@ -38,8 +38,21 @@ describe("isPublishablePlatform — the Meta gate", () => {
     expect(isPublishablePlatform("linkedin")).toBe(true);
   });
 
-  it("holds Instagram back until Meta is live", () => {
-    expect(isPublishablePlatform("instagram")).toBe(false);
+  /**
+   * 006 flipped this. Instagram was held back for as long as there was no Meta
+   * connector; there is one now, so it publishes — but only a post that carries
+   * an image, because the Instagram API has no caption-only post at all. Those
+   * are two different claims and `requiresImage` keeps them apart, so a UI
+   * cannot offer Publish on a post the platform will refuse.
+   */
+  it("lets Instagram through now that Meta is live", () => {
+    expect(isPublishablePlatform("instagram")).toBe(true);
+  });
+
+  it("still marks Instagram as needing an image, which LinkedIn does not", () => {
+    expect(requiresImage("instagram")).toBe(true);
+    expect(requiresImage("linkedin")).toBe(false);
+    expect(requiresImage("facebook")).toBe(false);
   });
 
   /**
@@ -55,8 +68,14 @@ describe("isPublishablePlatform — the Meta gate", () => {
     }
   });
 
-  it("holds back a platform the pack does not even write for", () => {
+  /**
+   * TikTok and YouTube publish video and nothing else, and this product writes
+   * words. They stay off the live list until there is a video to upload, so
+   * nothing can promise a founder a publish that could never happen (006).
+   */
+  it("holds back the video-only networks", () => {
     expect(isPublishablePlatform("tiktok")).toBe(false);
+    expect(isPublishablePlatform("youtube")).toBe(false);
   });
 });
 

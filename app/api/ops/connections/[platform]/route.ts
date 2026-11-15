@@ -6,17 +6,26 @@ import {
   CONNECT_RETURN_COOKIE,
   CONNECT_RETURN_INSTANT,
   createOAuthState,
+  createPkcePair,
   OAUTH_STATE_COOKIE,
   OAUTH_STATE_TTL_MS,
 } from "@/lib/connectors/oauth-state";
 import { isLinkedInConfigured, linkedInAuthorizationUrl } from "@/lib/connectors/linkedin/oauth";
+import { isMetaConfigured, metaAuthorizationUrl } from "@/lib/connectors/meta/oauth";
+import { isXConfigured, xAuthorizationUrl } from "@/lib/connectors/x/oauth";
+import { hasLiveConnector } from "@/lib/connectors/registry";
 import { TokenKeyError } from "@/lib/connectors/tokens";
 import { requestOrigin } from "@/lib/http/origin";
 
 /**
  * GET /api/ops/connections/:platform — starts an owner's OAuth connect flow
- * (002 T2.3, US2 AC1–AC2). Browser navigation, so failures redirect back to the
- * connections page with a readable message rather than returning JSON.
+ * (002 T2.3; 006 extends it past LinkedIn). Browser navigation, so failures
+ * redirect back with a readable message rather than returning JSON.
+ *
+ * The platform list is `lib/connectors/registry`, not a list here: a second
+ * list would eventually disagree with the one that decides what may publish,
+ * and the disagreement would be discovered by a founder connecting an account
+ * that can never post.
  */
 
 function back(request: NextRequest, message: string) {
@@ -28,6 +37,27 @@ function back(request: NextRequest, message: string) {
   return NextResponse.redirect(url);
 }
 
+/** Which env vars a platform needs, and the sentence to say when they are missing. */
+function configurationError(platform: string): string | null {
+  switch (platform) {
+    case "linkedin":
+      return isLinkedInConfigured()
+        ? null
+        : "LinkedIn is not configured on the server. Set LINKEDIN_CLIENT_ID, LINKEDIN_CLIENT_SECRET, and LINKEDIN_API_VERSION.";
+    case "facebook":
+    case "instagram":
+      return isMetaConfigured()
+        ? null
+        : "Meta is not configured on the server. Set META_APP_ID and META_APP_SECRET.";
+    case "x":
+      return isXConfigured()
+        ? null
+        : "X is not configured on the server. Set X_CLIENT_ID and X_CLIENT_SECRET.";
+    default:
+      return `Publishing to ${platform} is not available yet. Drafts still work.`;
+  }
+}
+
 export async function GET(request: NextRequest, { params }: { params: Promise<{ platform: string }> }) {
   const { platform } = await params;
   const session = await getOpsSession();
@@ -36,15 +66,16 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   if (!isOwner(session.activeWorkspace.role)) {
     return back(request, "Only an owner can connect accounts.");
   }
-  if (platform !== "linkedin") {
+  if (!hasLiveConnector(platform)) {
     return back(request, `Publishing to ${platform} is not available yet. Drafts still work.`);
   }
-  if (!isLinkedInConfigured()) {
-    return back(
-      request,
-      "LinkedIn is not configured on the server. Set LINKEDIN_CLIENT_ID, LINKEDIN_CLIENT_SECRET, and LINKEDIN_API_VERSION.",
-    );
-  }
+
+  const misconfigured = configurationError(platform);
+  if (misconfigured) return back(request, misconfigured);
+
+  // X requires PKCE. The verifier rides in the signed state cookie; only its
+  // hash goes to the platform.
+  const pkce = platform === "x" ? createPkcePair() : null;
 
   let state: string;
   let cookie: string;
@@ -53,6 +84,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       workspaceId: session.activeWorkspace.workspaceId,
       userId: session.userId,
       platform,
+      ...(pkce ? { verifier: pkce.verifier } : {}),
     }));
   } catch (error) {
     if (error instanceof TokenKeyError) return back(request, error.message);
@@ -60,7 +92,17 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   }
 
   const redirectUri = `${await requestOrigin()}/api/ops/connections/${platform}/callback`;
-  const response = NextResponse.redirect(linkedInAuthorizationUrl({ state, redirectUri }));
+
+  const authorizeUrl =
+    platform === "linkedin"
+      ? linkedInAuthorizationUrl({ state, redirectUri })
+      : platform === "x"
+        ? xAuthorizationUrl({ state, redirectUri, challenge: pkce!.challenge })
+        : // Facebook and Instagram share one Meta login; the platform in the
+          // redirect URI is what decides which asset the callback keeps.
+          metaAuthorizationUrl({ state, redirectUri });
+
+  const response = NextResponse.redirect(authorizeUrl);
 
   // Lax so it survives the top-level redirect back from the platform.
   if (request.nextUrl.searchParams.get("from") === CONNECT_RETURN_INSTANT) {

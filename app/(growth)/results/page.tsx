@@ -5,6 +5,7 @@ import { getOpsSession } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/db/server";
 import { hurdleSchema, type Hurdle } from "@/lib/growth/analyze";
 import { packAngleSchema, isPublishablePlatform, type PackAngle } from "@/lib/growth/pack";
+import { requiresImage } from "@/lib/connectors/registry";
 import { GeneratePack } from "./generate-pack";
 import { PackPost, type PackPostView } from "./pack-post";
 import { ResultsTabs } from "./results-tabs";
@@ -93,6 +94,8 @@ function toView(draft: DraftRow): PackPostView {
       : [],
     angle: str("angle"),
     publishable: isPublishablePlatform(draft.platform),
+    needsImage: requiresImage(draft.platform),
+    imageUrl: str("image_url"),
     edited: draft.original_payload !== null,
   };
 }

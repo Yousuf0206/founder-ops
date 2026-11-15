@@ -5,6 +5,10 @@ import { getOpsSession, isOwner } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/db/server";
 import { platformLabel } from "@/lib/content/platforms";
 import { isPublishablePlatform } from "@/lib/growth/pack";
+import { LIVE_PUBLISH_PLATFORMS } from "@/lib/connectors/registry";
+import { isLinkedInConfigured } from "@/lib/connectors/linkedin/oauth";
+import { isMetaConfigured } from "@/lib/connectors/meta/oauth";
+import { isXConfigured } from "@/lib/connectors/x/oauth";
 import type { PublishJobStatus } from "@/lib/publish/state";
 import { PublishPost, type PublishPostView } from "./publish-post";
 import { RetryJob } from "./retry-job";
@@ -70,6 +74,21 @@ function previewBody(payload: unknown): string {
     .join("\n\n");
 }
 
+/** Whether this deployment holds credentials for a platform (006). */
+function serverConfigured(platform: string): boolean {
+  switch (platform) {
+    case "linkedin":
+      return isLinkedInConfigured();
+    case "facebook":
+    case "instagram":
+      return isMetaConfigured();
+    case "x":
+      return isXConfigured();
+    default:
+      return false;
+  }
+}
+
 export default async function InstantPublishPage({
   searchParams,
 }: {
@@ -117,8 +136,23 @@ export default async function InstantPublishPage({
     ]);
 
   const connected = accounts ?? [];
-  // One connector this milestone (plan Phase 4), so one target: the first
-  // active LinkedIn account. The ops board is where multiple targets are chosen.
+
+  /*
+   * 006: a post goes to the account for ITS OWN platform.
+   *
+   * Until this milestone there was one connector, so "the first active account"
+   * was both the only target and the right one. With four, that shortcut would
+   * have published an Instagram caption through a LinkedIn profile the first
+   * time a founder connected both — the kind of mistake that is unrecoverable
+   * and public. The platform on the post is now what chooses the account, and a
+   * post whose platform is not connected simply has no publish button.
+   */
+  const accountFor = new Map<string, (typeof connected)[number]>();
+  for (const account of connected) {
+    if (isPublishablePlatform(account.platform) && !accountFor.has(account.platform)) {
+      accountFor.set(account.platform, account);
+    }
+  }
   const target = connected.find((a) => isPublishablePlatform(a.platform)) ?? null;
 
   const posts: PublishPostView[] = ((draftData ?? []) as DraftRow[]).map((draft) => ({
@@ -134,6 +168,15 @@ export default async function InstantPublishPage({
   const cap = (workspace as { daily_publish_cap?: number } | null)?.daily_publish_cap ?? null;
   const usedToday = typeof used === "number" ? used : null;
   const canConnect = isOwner(session.activeWorkspace.role);
+
+  /*
+   * Networks this server could connect and this workspace has not. Configured
+   * is checked here rather than on the click, so a founder is never sent to a
+   * platform round trip that ends in "not configured on the server".
+   */
+  const connectable = LIVE_PUBLISH_PLATFORMS.filter(
+    (platform) => serverConfigured(platform) && !accountFor.has(platform),
+  );
 
   return (
     <div>
@@ -158,13 +201,34 @@ export default async function InstantPublishPage({
       {/* 1 — the channel. Nothing can ship without one, so it comes first. */}
       <section className="mt-6 rounded-lg border border-line bg-surface p-4">
         {target ? (
-          <p className="text-sm">
-            Publishing to <span className="font-medium">{target.display_name || platformLabel(target.platform)}</span>
-            {" · "}
-            <Link href="/settings/connections" className="text-muted underline">
-              manage
-            </Link>
-          </p>
+          <>
+            <p className="text-sm">
+              Publishing to{" "}
+              <span className="font-medium">
+                {[...accountFor.values()]
+                  .map((account) => account.display_name || platformLabel(account.platform))
+                  .join(", ")}
+              </span>
+              {" · "}
+              <Link href="/settings/connections" className="text-muted underline">
+                manage
+              </Link>
+            </p>
+            {canConnect && connectable.length > 0 && (
+              <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
+                <span>Also connect:</span>
+                {connectable.map((platform) => (
+                  <a
+                    key={platform}
+                    href={`/api/ops/connections/${platform}?from=instant`}
+                    className="underline"
+                  >
+                    {platformLabel(platform)}
+                  </a>
+                ))}
+              </p>
+            )}
+          </>
         ) : canConnect ? (
           <>
             <p className="text-sm font-medium">Connect a channel</p>
@@ -172,12 +236,24 @@ export default async function InstantPublishPage({
               One account is enough to finish the loop. Your tokens stay on our server and
               never reach the browser.
             </p>
-            <a
-              href="/api/ops/connections/linkedin?from=instant"
-              className="mt-3 inline-block rounded-md bg-accent px-3 py-2 text-sm font-medium text-white"
-            >
-              Connect LinkedIn
-            </a>
+            {connectable.length === 0 ? (
+              <p className="mt-3 text-sm text-muted">
+                No network is configured on this server yet.
+              </p>
+            ) : (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {connectable.map((platform) => (
+                  // Plain anchors: these start redirect flows and must never be prefetched.
+                  <a
+                    key={platform}
+                    href={`/api/ops/connections/${platform}?from=instant`}
+                    className="rounded-md bg-accent px-3 py-2 text-sm font-medium text-white"
+                  >
+                    Connect {platformLabel(platform)}
+                  </a>
+                ))}
+              </div>
+            )}
           </>
         ) : (
           <p className="text-sm text-muted">
@@ -206,8 +282,11 @@ export default async function InstantPublishPage({
               <PublishPost
                 key={post.id}
                 post={post}
-                accountId={target?.id ?? null}
-                accountName={target?.display_name || null}
+                accountId={accountFor.get(post.platform)?.id ?? null}
+                accountName={
+                  accountFor.get(post.platform)?.display_name ||
+                  (accountFor.has(post.platform) ? platformLabel(post.platform) : null)
+                }
               />
             ))}
           </ul>

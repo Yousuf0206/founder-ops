@@ -29,15 +29,23 @@ import { hurdleSchema, type GrowthGoal, type Hurdle } from "@/lib/growth/analyze
 /**
  * The platforms a pack writes for.
  *
- * LinkedIn is the one platform that can publish today (lib/connectors/registry).
- * Instagram is here as DRAFT ONLY, deliberately: a founder wants the caption to
- * exist so they can post it by hand, and writing it costs nothing extra inside
- * a call already being made. It cannot reach a publish job — `hasLiveConnector`
- * is the single gate for that, so an Instagram post is not publishable and
- * never touches the publish cap, and it becomes publishable the day Meta joins
- * that list and not a moment before.
+ * These are the four with a live connector (lib/connectors/registry) — 006 added
+ * Facebook, Instagram and X to LinkedIn. Writing for a platform is still not the
+ * same as being able to publish to it: `hasLiveConnector` remains the single
+ * gate on reaching a publish job, and an Instagram post additionally needs an
+ * image before Instagram will take it.
+ *
+ * TikTok and YouTube are deliberately absent from publishing but could be
+ * written for; they are left out here too, because a pack of eight posts split
+ * six ways is six thin posts rather than a usable set. They come back when
+ * there is video to go with them.
  */
-export const PACK_PLATFORMS = ["linkedin", "instagram"] as const satisfies readonly SocialPlatform[];
+export const PACK_PLATFORMS = [
+  "linkedin",
+  "instagram",
+  "facebook",
+  "x",
+] as const satisfies readonly SocialPlatform[];
 
 /** At least five posts in a pack; more is fine, endless is not. */
 export const MIN_PACK_POSTS = 5;
@@ -52,8 +60,8 @@ Produce a growth pack in two parts.
    - hurdle: which hurdle it addresses, quoting the hurdle's title.
    - rationale: why this angle answers that hurdle.
 
-2. posts — between 5 and 8 posts, each written from one of your angles. Give each one:
-   - platform: exactly "linkedin" or "instagram".
+2. posts — between 5 and 8 posts, each written from one of your angles. Spread them across the platforms you are given rather than writing them all for one. Give each one:
+   - platform: exactly one of "linkedin", "instagram", "facebook", "x".
    - angle: the angle it comes from, quoted exactly from your angles list.
    - topic: a short label for the post, under 120 characters.
    - hook: the opening line.

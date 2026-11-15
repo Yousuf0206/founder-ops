@@ -29,6 +29,7 @@ const payload = {
   hashtags: ["#learning", "exams"],
   cta: "Try a free lesson",
   visual_plan: "",
+  image_url: "",
 };
 
 function capture(response: Response) {

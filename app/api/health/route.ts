@@ -140,12 +140,16 @@ export async function GET() {
       },
     },
     publish: {
-      // The single connector this milestone ships (plan Phase 4).
+      // Presence of credentials per connector (006). As everywhere else here,
+      // these say a key is SET, never that the platform accepts it — and for
+      // X in particular, a working key on a free tier still cannot post.
       linkedin: Boolean(
         process.env.LINKEDIN_CLIENT_ID &&
           process.env.LINKEDIN_CLIENT_SECRET &&
           process.env.LINKEDIN_API_VERSION,
       ),
+      meta: Boolean(process.env.META_APP_ID && process.env.META_APP_SECRET),
+      x: Boolean(process.env.X_CLIENT_ID && process.env.X_CLIENT_SECRET),
       tokenSealing: Boolean(process.env.CONNECTOR_TOKEN_KEY),
       cron: Boolean(process.env.CRON_SECRET),
     },

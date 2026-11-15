@@ -25,6 +25,9 @@ export type PackPostView = {
   hashtags: string[];
   angle: string;
   publishable: boolean;
+  /** This platform refuses a post without an image — Instagram (006). */
+  needsImage: boolean;
+  imageUrl: string;
   edited: boolean;
 };
 
@@ -42,10 +45,18 @@ export function PackPost({ post }: { post: PackPostView }) {
             {post.platform}
           </span>
           {!post.publishable && (
-            /* The Meta gate, stated where it matters rather than discovered at
-               the publish step. lib/connectors/registry.ts is what decides it. */
+            /* Stated where it matters rather than discovered at the publish
+               step. lib/connectors/registry.ts is what decides it. */
             <span className="rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-xs text-amber-900">
-              Copy only — publishing to this network isn&rsquo;t live yet
+              Copy only — this network publishes video
+            </span>
+          )}
+          {post.publishable && post.needsImage && !post.imageUrl && (
+            /* 006: Instagram has no caption-only post. Saying so here, on the
+               post, is the difference between a founder adding an image and a
+               founder meeting a platform refusal after approving. */
+            <span className="rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-xs text-amber-900">
+              Needs an image to publish
             </span>
           )}
           {post.edited && <span className="text-xs text-muted">edited</span>}
@@ -85,6 +96,21 @@ export function PackPost({ post }: { post: PackPostView }) {
           </label>
 
           <Field label="Call to action" name="cta" defaultValue={post.cta} maxLength={500} />
+
+          {post.needsImage && (
+            <div className="flex flex-col gap-1">
+              <Field
+                label="Image URL"
+                name="image_url"
+                defaultValue={post.imageUrl}
+                maxLength={2000}
+              />
+              <p className="text-xs text-muted">
+                Instagram cannot publish a caption on its own. Paste a public link to the
+                image — or leave it empty and copy the caption instead.
+              </p>
+            </div>
+          )}
 
           {state.error && (
             <p role="alert" className="text-sm text-red-600">

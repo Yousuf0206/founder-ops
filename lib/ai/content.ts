@@ -41,6 +41,18 @@ export const contentPayloadSchema = z.object({
   hashtags: z.array(z.string()).default([]),
   cta: z.string().default(""),
   visual_plan: z.string().default(""),
+  /**
+   * A public image URL to publish with the post (006).
+   *
+   * `visual_plan` describes a picture in words for a human to make; this is the
+   * made picture, and only a human puts it here. It matters because Instagram
+   * has no caption-only post: without an image there is literally no API call
+   * that publishes an Instagram post. On Facebook it is optional — with one the
+   * post becomes a photo post — and LinkedIn and X ignore it.
+   *
+   * Defaulted, so every draft written before this field existed still parses.
+   */
+  image_url: z.string().default(""),
 });
 
 export type ContentPayload = z.infer<typeof contentPayloadSchema>;

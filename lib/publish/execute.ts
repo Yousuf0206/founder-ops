@@ -3,7 +3,10 @@ import "server-only";
 import { contentPayloadSchema, type ContentPayload } from "@/lib/ai/content";
 import { ConnectorError } from "@/lib/connectors/errors";
 import { publishToLinkedIn } from "@/lib/connectors/linkedin/publish";
-import { decryptToken, TokenDecryptError, tokenContext } from "@/lib/connectors/tokens";
+import { publishToFacebookPage, publishToInstagram } from "@/lib/connectors/meta/publish";
+import { publishToX } from "@/lib/connectors/x/publish";
+import { refreshXToken } from "@/lib/connectors/x/oauth";
+import { decryptToken, encryptToken, TokenDecryptError, tokenContext } from "@/lib/connectors/tokens";
 import { createSupabaseAdminClient } from "@/lib/db/server";
 import { isEmailConfigured, notifyTeamMember } from "@/lib/email/notify";
 
@@ -35,6 +38,14 @@ type Admin = ReturnType<typeof createSupabaseAdminClient>;
 
 type PublishInput = { accessToken: string; externalAccountId: string; payload: ContentPayload };
 
+/**
+ * The one place a platform is chosen (006).
+ *
+ * `external_account_id` means a different thing per platform — a LinkedIn
+ * member, a Facebook Page, an Instagram professional account, an X user — and
+ * each connector names it for what it is rather than taking an anonymous id,
+ * so a row stored for one platform cannot quietly publish through another.
+ */
 async function publishVia(platform: string, input: PublishInput) {
   switch (platform) {
     case "linkedin":
@@ -43,9 +54,89 @@ async function publishVia(platform: string, input: PublishInput) {
         memberId: input.externalAccountId,
         payload: input.payload,
       });
+    case "facebook":
+      return publishToFacebookPage({
+        accessToken: input.accessToken,
+        pageId: input.externalAccountId,
+        payload: input.payload,
+      });
+    case "instagram":
+      return publishToInstagram({
+        accessToken: input.accessToken,
+        igUserId: input.externalAccountId,
+        payload: input.payload,
+      });
+    case "x":
+      return publishToX({ accessToken: input.accessToken, payload: input.payload });
     default:
       throw new ConnectorError("misconfigured", `There is no publish connector for ${platform} yet.`);
   }
+}
+
+type AccountRow = {
+  id: string;
+  workspace_id: string;
+  platform: string;
+  external_account_id: string;
+  display_name: string | null;
+  access_token_encrypted: string | null;
+  refresh_token_encrypted?: string | null;
+  expires_at: string | null;
+};
+
+/** Refresh a little early, so a token does not die between here and the call. */
+const REFRESH_WINDOW_MS = 5 * 60 * 1000;
+
+/**
+ * Returns a usable access token, refreshing first when the platform needs it
+ * (006).
+ *
+ * LinkedIn and Meta hand out tokens that outlive any single job — 60 days — so
+ * for them an expired token genuinely means "reconnect". X does not: its access
+ * tokens last about two hours, which is shorter than the gap between approving
+ * a post and a scheduled run sending it. Without a refresh here, scheduled
+ * posting to X would fail essentially always, and the founder would be told to
+ * reconnect an account that is perfectly healthy.
+ *
+ * X rotates the refresh token on every use, so the new one is written back
+ * before it is used. Losing that write means the next refresh fails, which is
+ * why it happens before the publish rather than after it.
+ */
+async function freshAccessToken(admin: Admin, account: AccountRow): Promise<string> {
+  if (!account.access_token_encrypted) {
+    throw new ConnectorError("token_revoked", "The account has no stored token. Reconnect it.");
+  }
+
+  const context = tokenContext(account.workspace_id, account.platform, account.external_account_id);
+  const expiresAt = account.expires_at ? new Date(account.expires_at).getTime() : null;
+  const expiringSoon = expiresAt !== null && expiresAt - Date.now() <= REFRESH_WINDOW_MS;
+
+  if (account.platform === "x" && expiringSoon && account.refresh_token_encrypted) {
+    const refreshed = await refreshXToken(decryptToken(account.refresh_token_encrypted, context));
+
+    const { error } = await admin
+      .from("connected_accounts")
+      .update({
+        access_token_encrypted: encryptToken(refreshed.accessToken, context),
+        refresh_token_encrypted: refreshed.refreshToken
+          ? encryptToken(refreshed.refreshToken, context)
+          : account.refresh_token_encrypted,
+        expires_at: refreshed.expiresAt?.toISOString() ?? null,
+      })
+      .eq("id", account.id);
+
+    // A refreshed token that could not be stored still publishes this job, but
+    // the next run would use the old rotated-away one. Say so loudly.
+    if (error) console.error("Could not store the refreshed X token:", error.message);
+
+    return refreshed.accessToken;
+  }
+
+  if (expiresAt !== null && expiresAt <= Date.now()) {
+    throw new ConnectorError("token_revoked", "The account's access token has expired. Reconnect it.");
+  }
+
+  return decryptToken(account.access_token_encrypted, context);
 }
 
 /** FR-P-010a: failures the team must act on are never silent. Best-effort. */
@@ -95,24 +186,17 @@ export async function executePublishJob(jobId: string): Promise<ExecuteOutcome> 
     admin.from("publish_jobs").select("id, workspace_id, platform, body_snapshot").eq("id", jobId).single(),
     admin
       .from("connected_accounts")
-      .select("id, workspace_id, platform, external_account_id, display_name, access_token_encrypted, expires_at")
+      .select(
+        "id, workspace_id, platform, external_account_id, display_name, access_token_encrypted, refresh_token_encrypted, expires_at",
+      )
       .eq("id", claim.account_id!)
       .single(),
   ]);
 
   try {
     if (!job || !account) throw new ConnectorError("misconfigured", "The job or its account could not be loaded.");
-    if (!account.access_token_encrypted) {
-      throw new ConnectorError("token_revoked", "The account has no stored token. Reconnect it.");
-    }
-    if (account.expires_at && new Date(account.expires_at).getTime() <= Date.now()) {
-      throw new ConnectorError("token_revoked", "The account's access token has expired. Reconnect it.");
-    }
 
-    const accessToken = decryptToken(
-      account.access_token_encrypted,
-      tokenContext(account.workspace_id, account.platform, account.external_account_id),
-    );
+    const accessToken = await freshAccessToken(admin, account as AccountRow);
     const payload = contentPayloadSchema.parse(job.body_snapshot);
 
     const receipt = await publishVia(account.platform, {

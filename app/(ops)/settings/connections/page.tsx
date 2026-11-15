@@ -4,6 +4,8 @@ import { isOwner } from "@/lib/auth/session";
 import { requireSession } from "@/lib/knowledge/repo";
 import { createSupabaseServerClient } from "@/lib/db/server";
 import { isLinkedInConfigured } from "@/lib/connectors/linkedin/oauth";
+import { isMetaConfigured } from "@/lib/connectors/meta/oauth";
+import { isXConfigured } from "@/lib/connectors/x/oauth";
 import { LIVE_PUBLISH_PLATFORMS } from "@/lib/connectors/registry";
 import { PLATFORM_LABELS, SOCIAL_PLATFORMS } from "@/lib/content/platforms";
 import { disconnectAccountAction, setAccountAutoAction } from "./actions";
@@ -18,6 +20,27 @@ type AccountRow = {
   expires_at: string | null;
   created_at: string;
 };
+
+/**
+ * Whether the SERVER has credentials for a platform (006).
+ *
+ * Separate from whether a connector exists: an app with no META_APP_ID can
+ * still see Facebook on this list, and telling the owner it is "not configured
+ * on the server" is more use than hiding the row and leaving them to guess.
+ */
+function platformConfigured(platform: string): boolean {
+  switch (platform) {
+    case "linkedin":
+      return isLinkedInConfigured();
+    case "facebook":
+    case "instagram":
+      return isMetaConfigured();
+    case "x":
+      return isXConfigured();
+    default:
+      return false;
+  }
+}
 
 export default async function ConnectionsPage({
   searchParams,
@@ -124,7 +147,7 @@ export default async function ConnectionsPage({
           <ul className="mt-3 flex flex-col gap-2">
             {SOCIAL_PLATFORMS.map((platform) => {
               const live = (LIVE_PUBLISH_PLATFORMS as readonly string[]).includes(platform);
-              const ready = live && keyConfigured && (platform !== "linkedin" || isLinkedInConfigured());
+              const ready = live && keyConfigured && platformConfigured(platform);
               return (
                 <li key={platform} className="flex items-center justify-between gap-4 text-sm">
                   <span>{PLATFORM_LABELS[platform]}</span>
@@ -138,7 +161,12 @@ export default async function ConnectionsPage({
                     </a>
                   ) : (
                     <span className="text-xs text-muted">
-                      {live ? "not configured on the server" : "drafts only for now"}
+                      {live
+                        ? "not configured on the server"
+                        : // TikTok and YouTube publish video and nothing else
+                          // (006); saying "yet" would promise something the
+                          // API cannot do with words.
+                          "copy only — these networks publish video"}
                     </span>
                   )}
                 </li>
