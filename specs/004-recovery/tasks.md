@@ -72,18 +72,17 @@ Audit baseline: 2026-11-15, against commit `24515c3` and Vercel project `founder
 - [x] **T-3.3** Goal `other` free text capped and injected into prompts —
   `GROWTH_GOALS` + `goalNote` in `app/(growth)/start/actions.ts`.
 - [ ] **T-3.4** `[owner]` Production dogfood: `https://lumo-learn.com` → hurdles list.
-- [ ] **T-3.5** `[owner]` **P0 — `0016` is half-applied on production.** Probed at commit
-  `3fcef69` as the service role via `/api/health`: `analyze_runs.goal`,
-  `analyze_runs.hurdles`, `publish_jobs` and `growth_packs.angles` are all present, and
-  **`product_facts` does not exist**. So `0016`'s two `add column if not exists` statements
-  landed and its `create table public.product_facts` did not.
-  Consequence: `product_facts` is what binds a first run with no approved claims, so SC-02
-  fails on production today and T-0.4 would surface it as a 409 that reads like a
-  claim-gate bug rather than a missing table.
-  Fix: re-run `supabase/migrations/0016_growth_instant_facts.sql` on the production project
-  (dashboard → SQL Editor). Re-running is safe — the ALTERs no-op; the CREATE TABLE and its
-  four RLS policies are what is missing. `/api/health` flips to 200 with
-  `migrations.applied: true` when it is done.
+- [x] **T-3.5** Migrations `0016_growth_instant_facts` and `0017_growth_pack` **are applied
+  on production.** Verified via `/api/health`, which probes the production database for
+  `analyze_runs.goal`, `analyze_runs.hurdles`, `publish_jobs`, `product_facts` and
+  `growth_packs.angles` as the service role.
+  Correction: the first version of that probe reported `product_facts` as missing. It was
+  asking for an `id` column, and `product_facts` is keyed by `workspace_id` with no `id` —
+  one row per workspace by design. The error was `42703` (undefined column), which the
+  endpoint was mapping to "missing table". The probe now names the right column and reports
+  a missing table and a missing column as separate claims, so a wrong column name in the
+  probe can never again present as an unapplied migration.
+
 - [~] **T-3.6** Generate pack from Hurdles → `/pack` with ≥3 angles and ≥5 editable posts —
   `app/(growth)/pack/`, `lib/growth/pack.ts`.
 - [~] **T-3.7** Posts persist for the publish pipeline as `content_drafts` rows —

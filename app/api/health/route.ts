@@ -52,21 +52,29 @@ export const dynamic = "force-dynamic";
 const SCHEMA_PROBES = [
   { migration: "0009_analyze_strategy", table: "analyze_runs", column: "id" },
   { migration: "0011_publish", table: "publish_jobs", column: "id" },
-  { migration: "0016_growth_instant_facts", table: "product_facts", column: "id" },
+  // product_facts is keyed by workspace_id and has no `id` column — one row per
+  // workspace, by design. Probing `id` here reported 42703 and the first version
+  // of this endpoint called that a missing table, which was wrong and alarming.
+  { migration: "0016_growth_instant_facts", table: "product_facts", column: "workspace_id" },
   // 0016 also widens analyze_runs for the Instant run.
   { migration: "0016_growth_instant_facts:hurdles", table: "analyze_runs", column: "hurdles" },
   { migration: "0016_growth_instant_facts:goal", table: "analyze_runs", column: "goal" },
   { migration: "0017_growth_pack", table: "growth_packs", column: "angles" },
 ] as const;
 
-const MISSING_CODES = new Set(["42P01", "42703", "PGRST202", "PGRST204", "PGRST205"]);
+/** The relation is not there at all. */
+const MISSING_TABLE_CODES = new Set(["42P01", "PGRST202", "PGRST205"]);
+/** The relation is there and the column is not — which may be this file's bug. */
+const MISSING_COLUMN_CODES = new Set(["42703", "PGRST204"]);
 
 async function probeSchema(): Promise<{
   applied: boolean;
-  missing: string[];
+  missingTables: string[];
+  missingColumns: string[];
   unknown: string[];
 }> {
-  const missing: string[] = [];
+  const missingTables: string[] = [];
+  const missingColumns: string[] = [];
   const unknown: string[] = [];
 
   try {
@@ -76,18 +84,33 @@ async function probeSchema(): Promise<{
       SCHEMA_PROBES.map(async (probe) => {
         const { error } = await supabase.from(probe.table).select(probe.column).limit(0);
         if (!error) return;
-        if (MISSING_CODES.has(error.code ?? "")) missing.push(probe.migration);
+        const code = error.code ?? "";
+        // A missing table and a missing column are different claims and are
+        // reported as such: "the migration never ran" is an emergency, while
+        // "this file asked for a column that is not there" is as likely to be a
+        // mistake in the probe. Collapsing them turned a wrong column name into
+        // a false P0 once already.
+        if (MISSING_TABLE_CODES.has(code)) missingTables.push(probe.table);
+        else if (MISSING_COLUMN_CODES.has(code)) {
+          missingColumns.push(`${probe.table}.${probe.column}`);
+        }
         // Past RLS, a remaining error is a connection or configuration problem.
         // It says nothing about the schema, so it is reported as unknown rather
         // than quietly counted as applied.
-        else unknown.push(`${probe.migration} (${error.code ?? "no code"})`);
+        else unknown.push(`${probe.migration} (${code || "no code"})`);
       }),
     );
   } catch {
-    return { applied: false, missing: [], unknown: ["probe failed"] };
+    return { applied: false, missingTables: [], missingColumns: [], unknown: ["probe failed"] };
   }
 
-  return { applied: missing.length === 0 && unknown.length === 0, missing, unknown };
+  return {
+    applied:
+      missingTables.length === 0 && missingColumns.length === 0 && unknown.length === 0,
+    missingTables,
+    missingColumns,
+    unknown,
+  };
 }
 
 export async function GET() {
@@ -111,7 +134,8 @@ export async function GET() {
       // T-3.5: the schema the Instant path needs, as observed on this database.
       migrations: {
         applied: schema.applied,
-        ...(schema.missing.length > 0 ? { missing: schema.missing } : {}),
+        ...(schema.missingTables.length > 0 ? { missingTables: schema.missingTables } : {}),
+        ...(schema.missingColumns.length > 0 ? { missingColumns: schema.missingColumns } : {}),
         ...(schema.unknown.length > 0 ? { unknown: schema.unknown } : {}),
       },
     },
