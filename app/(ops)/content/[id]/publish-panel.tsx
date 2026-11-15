@@ -3,7 +3,7 @@
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 
-import { publishDraftAction, type PublishState } from "../../publish/actions";
+import { publishDraftAction, type PublishState } from "../../advanced/publish/actions";
 
 /**
  * Publish or schedule an approved draft to a connected account (002 US4 AC3–4).

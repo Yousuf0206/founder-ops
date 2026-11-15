@@ -171,7 +171,7 @@ export default async function HelpPage() {
           </Step>
           <Step n={6} title="Publish and learn">
             Publish or schedule from the draft&apos;s page; follow every post on{" "}
-            <Link href="/publish" className="underline">
+            <Link href="/advanced/publish" className="underline">
               Publish
             </Link>
             . On{" "}

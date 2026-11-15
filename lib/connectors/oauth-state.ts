@@ -16,6 +16,22 @@ import { loadTokenKey } from "@/lib/connectors/tokens";
 export const OAUTH_STATE_COOKIE = "lumo-ops-oauth";
 export const OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
 
+/**
+ * Where to send the user after a connect round trip (004 T-4.3).
+ *
+ * The Instant path and the ops console both start the same OAuth flow, and the
+ * founder in Instant must not be dropped into the ops shell on the way back.
+ * This cookie carries that one bit.
+ *
+ * It is NOT a redirect target and never holds a URL: the callback accepts only
+ * the literal value below and chooses between two hardcoded paths, so there is
+ * nothing here an attacker could point somewhere else. It is unsigned for the
+ * same reason — the worst a forged value can do is land the user on a different
+ * page of this app.
+ */
+export const CONNECT_RETURN_COOKIE = "lumo-ops-connect-return";
+export const CONNECT_RETURN_INSTANT = "instant";
+
 type StatePayload = {
   state: string;
   workspaceId: string;

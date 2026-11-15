@@ -2,7 +2,13 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { isOwner } from "@/lib/auth/session";
 import { getOpsSession } from "@/lib/auth/session";
-import { createOAuthState, OAUTH_STATE_COOKIE, OAUTH_STATE_TTL_MS } from "@/lib/connectors/oauth-state";
+import {
+  CONNECT_RETURN_COOKIE,
+  CONNECT_RETURN_INSTANT,
+  createOAuthState,
+  OAUTH_STATE_COOKIE,
+  OAUTH_STATE_TTL_MS,
+} from "@/lib/connectors/oauth-state";
 import { isLinkedInConfigured, linkedInAuthorizationUrl } from "@/lib/connectors/linkedin/oauth";
 import { TokenKeyError } from "@/lib/connectors/tokens";
 import { requestOrigin } from "@/lib/http/origin";
@@ -14,7 +20,10 @@ import { requestOrigin } from "@/lib/http/origin";
  */
 
 function back(request: NextRequest, message: string) {
-  const url = new URL("/settings/connections", request.url);
+  // A founder who started from Instant gets their error on Instant's Publish
+  // screen; an owner who started in the console stays in the console.
+  const fromInstant = request.nextUrl.searchParams.get("from") === CONNECT_RETURN_INSTANT;
+  const url = new URL(fromInstant ? "/publish" : "/settings/connections", request.url);
   url.searchParams.set("error", message);
   return NextResponse.redirect(url);
 }
@@ -54,6 +63,16 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const response = NextResponse.redirect(linkedInAuthorizationUrl({ state, redirectUri }));
 
   // Lax so it survives the top-level redirect back from the platform.
+  if (request.nextUrl.searchParams.get("from") === CONNECT_RETURN_INSTANT) {
+    response.cookies.set(CONNECT_RETURN_COOKIE, CONNECT_RETURN_INSTANT, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/api/ops/connections",
+      maxAge: Math.floor(OAUTH_STATE_TTL_MS / 1000),
+    });
+  }
+
   response.cookies.set(OAUTH_STATE_COOKIE, cookie, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",

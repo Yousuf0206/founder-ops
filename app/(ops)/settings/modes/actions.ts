@@ -104,6 +104,7 @@ export async function saveModesAction(_prev: ModesState, formData: FormData): Pr
   }
 
   revalidatePath("/settings/modes");
+  revalidatePath("/advanced/publish");
   revalidatePath("/publish");
   return { done: "Publishing controls saved." };
 }

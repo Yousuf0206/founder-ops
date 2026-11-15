@@ -22,6 +22,7 @@ export async function disconnectAccountAction(formData: FormData): Promise<void>
   await disconnectAccount(parsed.data.account_id);
 
   revalidatePath("/settings/connections");
+  revalidatePath("/advanced/publish");
   revalidatePath("/publish");
 }
 

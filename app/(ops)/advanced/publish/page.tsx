@@ -5,7 +5,7 @@ import { requireSession } from "@/lib/knowledge/repo";
 import { createSupabaseServerClient } from "@/lib/db/server";
 import { platformLabel } from "@/lib/content/platforms";
 import { canCancel, canRetry, type PublishJobStatus } from "@/lib/publish/state";
-import { StatusPill } from "../status-pill";
+import { StatusPill } from "../../status-pill";
 import { cancelJobAction, retryJobAction, runDueNowAction } from "./actions";
 
 type JobRow = {

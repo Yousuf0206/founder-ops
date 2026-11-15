@@ -129,7 +129,7 @@ export default async function AdvancedOverviewPage() {
         <Stage n={2} title="Analyses" href="/analyze" value={`${analyses ?? 0} saved`} />
         <Stage n={3} title="Ideas" href="/strategy" value={`${ideas ?? 0} to draft`} />
         <Stage n={4} title="Approvals" href="/approvals" value={`${pendingApprovals ?? 0} waiting`} warn={(pendingApprovals ?? 0) > 0} />
-        <Stage n={5} title="Publishing" href="/publish" value={`${accounts ?? 0} account${accounts === 1 ? "" : "s"} connected`} />
+        <Stage n={5} title="Publishing" href="/advanced/publish" value={`${accounts ?? 0} account${accounts === 1 ? "" : "s"} connected`} />
         <Stage n={6} title="Learn" href="/insights" value={`${pendingProposals ?? 0} proposal${pendingProposals === 1 ? "" : "s"} to review`} warn={(pendingProposals ?? 0) > 0} />
       </ol>
 

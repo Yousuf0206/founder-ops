@@ -31,7 +31,7 @@ const NAV = [
   { href: "/strategy", label: "Strategy" },
   { href: "/content", label: "Content" },
   { href: "/approvals", label: "Approvals" },
-  { href: "/publish", label: "Publish" },
+  { href: "/advanced/publish", label: "Publish" },
   { href: "/insights", label: "Insights" },
   { href: "/campaigns", label: "Campaigns" },
   { href: "/leads", label: "Leads" },

@@ -4,7 +4,12 @@ import { getOpsSession } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/db/server";
 import { ConnectorError } from "@/lib/connectors/errors";
 import { exchangeLinkedInCode, fetchLinkedInIdentity } from "@/lib/connectors/linkedin/oauth";
-import { OAUTH_STATE_COOKIE, verifyOAuthState } from "@/lib/connectors/oauth-state";
+import {
+  CONNECT_RETURN_COOKIE,
+  CONNECT_RETURN_INSTANT,
+  OAUTH_STATE_COOKIE,
+  verifyOAuthState,
+} from "@/lib/connectors/oauth-state";
 import { encryptToken, TokenKeyError, tokenContext } from "@/lib/connectors/tokens";
 import { requestOrigin } from "@/lib/http/origin";
 
@@ -19,10 +24,16 @@ import { requestOrigin } from "@/lib/http/origin";
  */
 
 function finish(request: NextRequest, params: Record<string, string>) {
-  const url = new URL("/settings/connections", request.url);
+  // Two literal destinations, chosen by the cookie the start route set: the
+  // Instant Publish screen for a founder mid-loop, the ops connections page for
+  // an owner in the console. Nothing from the request reaches this path.
+  const fromInstant =
+    request.cookies.get(CONNECT_RETURN_COOKIE)?.value === CONNECT_RETURN_INSTANT;
+  const url = new URL(fromInstant ? "/publish" : "/settings/connections", request.url);
   for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value);
   const response = NextResponse.redirect(url);
   response.cookies.delete({ name: OAUTH_STATE_COOKIE, path: "/api/ops/connections" });
+  response.cookies.delete({ name: CONNECT_RETURN_COOKIE, path: "/api/ops/connections" });
   return response;
 }
 

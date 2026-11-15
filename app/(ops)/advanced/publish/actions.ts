@@ -33,6 +33,7 @@ function describe(outcome: ExecuteOutcome): PublishState {
 }
 
 function refresh(draftId?: string) {
+  revalidatePath("/advanced/publish");
   revalidatePath("/publish");
   revalidatePath("/content");
   if (draftId) revalidatePath(`/content/${draftId}`);
