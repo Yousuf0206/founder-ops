@@ -17,8 +17,14 @@ Expect it to take about fifteen minutes end to end, most of it waiting on two AI
 curl -s https://lumo-ops.vercel.app/api/health | python -m json.tool
 ```
 
-Expect `"ok": true`, `ai.configured: true`, a model name, and
-`publish.linkedin: true`. The `commit` field tells you which build answered.
+Expect `"ok": true`, `ai.configured: true`, a model name,
+`publish.linkedin: true`, and `supabase.migrations.applied: true`. The `commit` field tells
+you which build answered.
+
+`migrations` is probed, not assumed: the endpoint asks the production database for zero
+rows of one column per migration and names any that are missing. As of 2026-11-15 it
+reports `missing: ["0016_growth_instant_facts"]` — `product_facts` was never created on
+production — so step 3 below will fail until that migration is re-run. See T-3.5.
 
 This proves the keys are *present*, not that they *work* — step 3 proves that. A `503`
 here means stop: a variable is missing on Vercel Production (constitution R4 makes that a

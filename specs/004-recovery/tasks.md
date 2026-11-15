@@ -72,9 +72,18 @@ Audit baseline: 2026-11-15, against commit `24515c3` and Vercel project `founder
 - [x] **T-3.3** Goal `other` free text capped and injected into prompts —
   `GROWTH_GOALS` + `goalNote` in `app/(growth)/start/actions.ts`.
 - [ ] **T-3.4** `[owner]` Production dogfood: `https://lumo-learn.com` → hurdles list.
-- [ ] **T-3.5** `[owner]` Confirm migrations `0016_growth_instant_facts.sql` and
-  `0017_growth_pack.sql` are applied on the **production** Supabase project. Present in the
-  repo; application state not observable from here.
+- [ ] **T-3.5** `[owner]` **P0 — `0016` is half-applied on production.** Probed at commit
+  `3fcef69` as the service role via `/api/health`: `analyze_runs.goal`,
+  `analyze_runs.hurdles`, `publish_jobs` and `growth_packs.angles` are all present, and
+  **`product_facts` does not exist**. So `0016`'s two `add column if not exists` statements
+  landed and its `create table public.product_facts` did not.
+  Consequence: `product_facts` is what binds a first run with no approved claims, so SC-02
+  fails on production today and T-0.4 would surface it as a 409 that reads like a
+  claim-gate bug rather than a missing table.
+  Fix: re-run `supabase/migrations/0016_growth_instant_facts.sql` on the production project
+  (dashboard → SQL Editor). Re-running is safe — the ALTERs no-op; the CREATE TABLE and its
+  four RLS policies are what is missing. `/api/health` flips to 200 with
+  `migrations.applied: true` when it is done.
 - [~] **T-3.6** Generate pack from Hurdles → `/pack` with ≥3 angles and ≥5 editable posts —
   `app/(growth)/pack/`, `lib/growth/pack.ts`.
 - [~] **T-3.7** Posts persist for the publish pipeline as `content_drafts` rows —
