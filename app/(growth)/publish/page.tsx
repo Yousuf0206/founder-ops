@@ -195,8 +195,8 @@ export default async function InstantPublishPage({
         {posts.length === 0 ? (
           <p className="mt-3 rounded-lg border border-line bg-surface p-4 text-sm text-muted">
             No posts are waiting.{" "}
-            <Link href="/pack" className="underline">
-              Generate a pack
+            <Link href="/results" className="underline">
+              Write some posts
             </Link>{" "}
             and they appear here.
           </p>

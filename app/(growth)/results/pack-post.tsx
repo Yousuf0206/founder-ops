@@ -4,9 +4,10 @@ import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { savePackPostAction, type PackState } from "./actions";
+import { CopyPost, postText } from "./copy-post";
 
 /**
- * One editable post in the pack.
+ * One post on Results: readable, copyable, editable in place.
  *
  * Editing is inline and per post rather than one form for the whole pack: a
  * founder fixes one line in one post, and a single giant form would make them
@@ -44,7 +45,7 @@ export function PackPost({ post }: { post: PackPostView }) {
             /* The Meta gate, stated where it matters rather than discovered at
                the publish step. lib/connectors/registry.ts is what decides it. */
             <span className="rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-xs text-amber-900">
-              Draft only — copy it out by hand until Instagram publishing is live
+              Copy only — publishing to this network isn&rsquo;t live yet
             </span>
           )}
           {post.edited && <span className="text-xs text-muted">edited</span>}
@@ -106,6 +107,12 @@ export function PackPost({ post }: { post: PackPostView }) {
           {post.hashtags.length > 0 && (
             <p className="text-muted">{post.hashtags.join(" ")}</p>
           )}
+
+          {/* R7: Copy is the primary action on a post, on every post, whether or
+              not the network it was written for can be published to. */}
+          <div className="mt-1">
+            <CopyPost text={postText(post)} />
+          </div>
         </div>
       )}
     </li>

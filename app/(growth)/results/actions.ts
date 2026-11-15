@@ -52,7 +52,7 @@ function messageFor(error: unknown): string {
   return "Something went wrong. Try again.";
 }
 
-/** Generates a pack from the latest analysis. The CTA on Hurdles calls this. */
+/** Generates a pack from the latest analysis. The CTA on Results calls this. */
 export async function generatePackAction(
   _prev: PackState,
   _formData: FormData,
@@ -93,8 +93,8 @@ export async function generatePackAction(
     return { error: messageFor(error) };
   }
 
-  revalidatePath("/pack");
-  redirect("/pack");
+  revalidatePath("/results");
+  redirect("/results");
 }
 
 /**
@@ -157,6 +157,6 @@ export async function savePackPostAction(
 
   if (writeError) return { error: "That edit could not be saved." };
 
-  revalidatePath("/pack");
+  revalidatePath("/results");
   return {};
 }

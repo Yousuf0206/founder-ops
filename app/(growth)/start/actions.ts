@@ -149,6 +149,6 @@ export async function startAnalysisAction(
 
   if (signedOut) redirect("/login?next=/start");
 
-  revalidatePath("/hurdles");
-  redirect("/hurdles");
+  revalidatePath("/results");
+  redirect("/results");
 }

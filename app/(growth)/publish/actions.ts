@@ -53,7 +53,7 @@ function describe(outcome: ExecuteOutcome): InstantPublishState {
 function refresh() {
   revalidatePath("/publish");
   revalidatePath("/next");
-  revalidatePath("/pack");
+  revalidatePath("/results");
   // The ops board shows the same jobs.
   revalidatePath("/advanced/publish");
 }

@@ -6,15 +6,20 @@ import { createSupabaseServerClient } from "@/lib/db/server";
 /**
  * The Growth Instant shell (T-A1, T-D4).
  *
- * The navigation contract from spec.md is implemented here and nowhere else:
+ * The navigation contract is implemented here and nowhere else. 6.0.0-subtraction
+ * cut it from five entries to two (constitution R2, SC-04):
  *
- *   Auth ......................... pre-app gate, not a destination
- *   Start · Hurdles · Pack · Publish · Next ... the five primary destinations
- *   Generate pack ................ an action on Hurdles, not a screen
- *   Settings / Advanced .......... NOT main nav
+ *   Auth .................. pre-app gate, not a destination
+ *   Start · Results ....... the only two primary destinations
+ *   Write my posts ........ an action on Results, not a screen
+ *   Publish / Next ........ reachable, never primary (R7: Copy is the win)
+ *   Advanced .............. buried in the footer, never co-equal
  *
- * Adding a sixth entry to NAV breaks SC-06. That is a spec violation, not a
- * layout preference — see FR-GI-A-006.
+ * A third entry in NAV breaks SC-04. Hurdles and Pack were two of the five, and
+ * they are now the two in-page tabs of Results — the work is one thing, so it is
+ * one screen. Publish stayed a route because an existing user mid-approval must
+ * not lose it, but it is no longer somewhere a first run is pushed towards, and
+ * nothing on the simple path requires it.
  *
  * Unlike the (ops) shell, a signed-in user with no membership is NOT sent to
  * /onboarding: UX Principle 4 forbids a setup form before a first result, and
@@ -23,10 +28,7 @@ import { createSupabaseServerClient } from "@/lib/db/server";
 
 const NAV = [
   { href: "/start", label: "Start" },
-  { href: "/hurdles", label: "Hurdles" },
-  { href: "/pack", label: "Pack" },
-  { href: "/publish", label: "Publish" },
-  { href: "/next", label: "Next" },
+  { href: "/results", label: "Results" },
 ] as const;
 
 export default async function GrowthLayout({

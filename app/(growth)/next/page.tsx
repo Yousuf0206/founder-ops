@@ -132,16 +132,16 @@ export default async function NextPage() {
     });
   } else {
     actions.push({
-      href: "/pack",
+      href: "/results",
       label: "Write more posts",
-      detail: "Your pack is empty or spent. Generate a fresh one from your hurdles.",
+      detail: "Your posts are spent. Write a fresh set from the problems we found.",
     });
   }
 
   actions.push({
-    href: "/hurdles",
-    label: "Re-read your hurdles",
-    detail: "The list that produced these posts, with Generate pack still on it.",
+    href: "/results",
+    label: "Re-read your results",
+    detail: "The problems that produced these posts, and the posts themselves.",
   });
 
   actions.push({
