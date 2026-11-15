@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { configuredModel, isProviderConfigured } from "@/lib/ai/provider";
+import { createSupabaseServerClient } from "@/lib/db/server";
 
 /**
  * GET /api/health — the configuration signal (004 T-5.2).
@@ -27,11 +28,71 @@ import { configuredModel, isProviderConfigured } from "@/lib/ai/provider";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * Has the schema the Instant path needs actually reached this database?
+ * (004 T-3.5.)
+ *
+ * Migrations are files in the repo; whether they ran against the *production*
+ * project is a different fact, and constitution R4 makes an unapplied migration
+ * a P0 defect rather than an ops footnote. Nothing on the signed-out surface
+ * touches these tables, so without this probe the answer only appears when a
+ * founder's pack fails mid-run.
+ *
+ * Each entry asks the database for zero rows of one column. Under RLS an
+ * anonymous caller sees an empty result either way, so the signal is the error
+ * code, not the data: `42P01` means the table is missing, `42703` the column,
+ * `PGRST20x` that PostgREST has never heard of the relation. No row, column
+ * value, count or schema detail is returned — only present/missing per
+ * migration.
+ */
+const SCHEMA_PROBES = [
+  { migration: "0009_analyze_strategy", table: "analyze_runs", column: "id" },
+  { migration: "0011_publish", table: "publish_jobs", column: "id" },
+  { migration: "0016_growth_instant_facts", table: "product_facts", column: "id" },
+  // 0016 also widens analyze_runs for the Instant run.
+  { migration: "0016_growth_instant_facts:hurdles", table: "analyze_runs", column: "hurdles" },
+  { migration: "0016_growth_instant_facts:goal", table: "analyze_runs", column: "goal" },
+  { migration: "0017_growth_pack", table: "growth_packs", column: "angles" },
+] as const;
+
+const MISSING_CODES = new Set(["42P01", "42703", "PGRST202", "PGRST204", "PGRST205"]);
+
+async function probeSchema(): Promise<{
+  applied: boolean;
+  missing: string[];
+  unknown: string[];
+}> {
+  const missing: string[] = [];
+  const unknown: string[] = [];
+
+  try {
+    const supabase = await createSupabaseServerClient();
+
+    await Promise.all(
+      SCHEMA_PROBES.map(async (probe) => {
+        const { error } = await supabase.from(probe.table).select(probe.column).limit(0);
+        if (!error) return;
+        if (MISSING_CODES.has(error.code ?? "")) missing.push(probe.migration);
+        // A permission or connection error says nothing about the schema, so it
+        // is reported as unknown rather than quietly counted as applied.
+        else unknown.push(probe.migration);
+      }),
+    );
+  } catch {
+    return { applied: false, missing: [], unknown: ["probe failed"] };
+  }
+
+  return { applied: missing.length === 0 && unknown.length === 0, missing, unknown };
+}
+
 export async function GET() {
   const aiConfigured = isProviderConfigured();
+  const schema = await probeSchema();
 
   const body = {
-    ok: aiConfigured && Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL),
+    // An unapplied migration breaks the loop just as surely as a missing key,
+    // so it counts against `ok`.
+    ok: aiConfigured && Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL) && schema.applied,
     ai: {
       configured: aiConfigured,
       provider: process.env.AI_PROVIDER ?? null,
@@ -42,6 +103,12 @@ export async function GET() {
         process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
       ),
       serviceRole: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
+      // T-3.5: the schema the Instant path needs, as observed on this database.
+      migrations: {
+        applied: schema.applied,
+        ...(schema.missing.length > 0 ? { missing: schema.missing } : {}),
+        ...(schema.unknown.length > 0 ? { unknown: schema.unknown } : {}),
+      },
     },
     publish: {
       // The single connector this milestone ships (plan Phase 4).
