@@ -130,8 +130,31 @@ export default async function LoginPage({
   return (
     <div className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-6">
       <h1 className="text-lg font-semibold tracking-tight">Lumo Grow</h1>
-      <p className="mt-1 text-sm text-muted">
-        {signingUp ? "Create your account to get started." : "Sign in to your workspace."}
+
+      {/*
+        The logged-out value prop (004 T-1.1, SC-09). Until this existed, the
+        only thing a visitor could learn from production was that it has a
+        password field. Three bullets, no screenshots, no marketing page: the
+        point is that someone who has never heard of this can tell in ten
+        seconds what it does.
+
+        It deliberately promises nothing it cannot do: there is no demo without
+        an account (constitution R3 — analyze burns AI credits), so the copy
+        says "sign in" rather than "try it".
+      */}
+      <p className="mt-2 text-sm text-fg">
+        Paste your product URL. Get the growth hurdles holding it back, and the posts that
+        answer them.
+      </p>
+      <ul className="mt-3 flex flex-col gap-1.5 text-sm text-muted">
+        <li>· A ranked read of what is blocking signups, from your own public pages.</li>
+        <li>· A content pack — angles and ready-to-edit posts — built from that read.</li>
+        <li>· Publish to a channel you connect, after you approve the words.</li>
+      </ul>
+      <p className="mt-3 text-xs text-muted">
+        {signingUp
+          ? "Create an account to run your first analysis."
+          : "Sign in to run your first analysis."}
       </p>
 
       {params.error && (
