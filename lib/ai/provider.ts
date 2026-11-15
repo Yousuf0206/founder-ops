@@ -19,6 +19,13 @@ export type GenerationResult = {
   model: string;
   promptTokens: number | null;
   outputTokens: number | null;
+  /**
+   * The provider stopped because it hit its output ceiling, so `text` is a
+   * sentence — or a JSON document — cut off mid-way (005 D-1). Callers that
+   * parse structured output need this to tell "the model answered badly" from
+   * "the model ran out of room", which are fixed by different things.
+   */
+  truncated: boolean;
 };
 
 export class ProviderError extends Error {
@@ -119,11 +126,12 @@ export async function generate(
     }
 
     const payload = (await response.json()) as {
-      choices?: { message?: { content?: string } }[];
+      choices?: { message?: { content?: string }; finish_reason?: string }[];
       usage?: { prompt_tokens?: number; completion_tokens?: number };
     };
 
-    const text = payload.choices?.[0]?.message?.content;
+    const choice = payload.choices?.[0];
+    const text = choice?.message?.content;
     if (!text) throw new ProviderError("Provider returned no content.", true);
 
     return {
@@ -131,6 +139,9 @@ export async function generate(
       model,
       promptTokens: payload.usage?.prompt_tokens ?? null,
       outputTokens: payload.usage?.completion_tokens ?? null,
+      // Every OpenAI-compatible provider reports this; "length" is the only
+      // value that means the answer was cut rather than finished.
+      truncated: choice?.finish_reason === "length",
     };
   } catch (error) {
     if (error instanceof ProviderError) throw error;

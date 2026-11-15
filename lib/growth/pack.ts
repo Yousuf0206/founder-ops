@@ -116,8 +116,24 @@ export class NoAnalysisError extends Error {
   }
 }
 
+/**
+ * Why a pack could not be read. The sentence the founder sees is the same in
+ * every case — they can do exactly one thing about it — but the reason is what
+ * makes the next failure diagnosable instead of a shrug (005 D-1).
+ *
+ *   invalid_json   the response was not JSON at all, or was cut off mid-object
+ *   truncated      the provider stopped at its output ceiling, so JSON ended early
+ *   no_angles      JSON parsed, no angle survived validation
+ *   too_few_posts  JSON parsed, fewer than MIN_PACK_POSTS usable posts
+ */
+export type PackFailureReason = "invalid_json" | "truncated" | "no_angles" | "too_few_posts";
+
 export class UnparseablePackError extends Error {
-  constructor() {
+  constructor(
+    readonly reason: PackFailureReason = "invalid_json",
+    /** Counts only — never model text, which may carry the user's own content. */
+    readonly counts: { angles?: number; posts?: number; dropped?: number } = {},
+  ) {
     super("The pack came back unreadable. The failed run was logged — try again.");
     this.name = "UnparseablePackError";
   }
@@ -133,6 +149,123 @@ export class PackForbiddenContentError extends Error {
 function extractJson(text: string): string {
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/);
   return (fenced?.[1] ?? text).trim();
+}
+
+/**
+ * Reads a pack out of model output, keeping what is usable (005 D-1).
+ *
+ * The strict version of this was `growthPackSchema.parse(...)` in a try/catch:
+ * one malformed post, a ninth post past the maximum, or a platform the model
+ * spelled "Linkedin" discarded the whole pack and charged the founder a cap
+ * slot for nothing. That is what failed on production on 2026-11-15 and
+ * succeeded on an identical retry seconds later — the model is non-deterministic
+ * at the edges of a shape, and an all-or-nothing reader turns a wobble into a
+ * dead end on someone's first run.
+ *
+ * So the lists are read element by element. A bad post is dropped, a surplus
+ * post is trimmed, and the pack fails only when what survives is genuinely not a
+ * pack: no angle at all, or fewer than the five posts the product promises. The
+ * floors still mean something — they are simply applied to what arrived rather
+ * than used as a reason to throw it all away.
+ *
+ * `truncated` comes from the provider's own finish reason. A pack cut off at
+ * the output ceiling is a different fact from a model that answered in prose,
+ * and only the first is fixed by asking for fewer posts.
+ */
+export function parsePackOutput(
+  text: string,
+  options: { truncated?: boolean } = {},
+): { pack: GrowthPackOutput; dropped: number } {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(extractJson(text));
+  } catch {
+    throw new UnparseablePackError(options.truncated ? "truncated" : "invalid_json");
+  }
+
+  const root = (raw ?? {}) as { angles?: unknown; posts?: unknown };
+
+  const angles: PackAngle[] = (Array.isArray(root.angles) ? root.angles : []).flatMap((item) => {
+    const result = packAngleSchema.safeParse(item);
+    return result.success ? [result.data] : [];
+  });
+
+  const candidates = Array.isArray(root.posts) ? root.posts : [];
+  const posts: PackPost[] = [];
+  let dropped = 0;
+  for (const item of candidates) {
+    const result = packPostSchema.safeParse(normalizePostInput(item));
+    if (result.success) posts.push(normalizePost(result.data));
+    else dropped += 1;
+  }
+
+  if (angles.length === 0) {
+    throw new UnparseablePackError(options.truncated ? "truncated" : "no_angles", {
+      posts: posts.length,
+      dropped,
+    });
+  }
+  if (posts.length < MIN_PACK_POSTS) {
+    throw new UnparseablePackError(options.truncated ? "truncated" : "too_few_posts", {
+      angles: angles.length,
+      posts: posts.length,
+      dropped,
+    });
+  }
+
+  return {
+    // Surplus is trimmed rather than refused: a ninth good post is not a reason
+    // to show a founder none.
+    pack: { angles: angles.slice(0, 4), posts: posts.slice(0, MAX_PACK_POSTS) },
+    dropped,
+  };
+}
+
+/** Forgives the spellings a model reaches for before the schema sees them. */
+function normalizePostInput(item: unknown): unknown {
+  if (!item || typeof item !== "object") return item;
+  const post = item as Record<string, unknown>;
+  if (typeof post.platform !== "string") return item;
+  return { ...post, platform: post.platform.trim().toLowerCase() };
+}
+
+/**
+ * The hashtag de-duplication (005 D-4).
+ *
+ * Models routinely end the body with the same hashtag line they also return in
+ * `hashtags`, so a copied post pasted them twice — in the product's own output,
+ * which is the one thing a founder takes away from here. The trailing
+ * hashtag-only line is removed from the body and its tags folded into the list,
+ * so nothing is lost and nothing is said twice.
+ */
+export function normalizePost(post: PackPost): PackPost {
+  const lines = post.script.split("\n");
+  const tags = [...post.hashtags];
+
+  while (lines.length > 0) {
+    const last = (lines[lines.length - 1] ?? "").trim();
+    if (last === "") {
+      lines.pop();
+      continue;
+    }
+    const words = last.split(/\s+/);
+    if (!words.every((word) => /^#[^\s#]+$/.test(word))) break;
+    for (const word of words) {
+      if (!tags.some((tag) => tag.toLowerCase() === word.toLowerCase())) tags.push(word);
+    }
+    lines.pop();
+  }
+
+  // Duplicates inside the list itself, case-insensitively, keeping first use.
+  const seen = new Set<string>();
+  const hashtags = tags.filter((tag) => {
+    const key = tag.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  return { ...post, script: lines.join("\n").trimEnd(), hashtags };
 }
 
 /**
@@ -241,9 +374,23 @@ export async function runGrowthPack(
 
   let pack: GrowthPackOutput;
   try {
-    pack = growthPackSchema.parse(JSON.parse(extractJson(result.text)));
-  } catch {
-    throw new UnparseablePackError();
+    const parsed = parsePackOutput(result.text, { truncated: result.truncated });
+    pack = parsed.pack;
+    if (parsed.dropped > 0) {
+      // Not a failure, but not nothing either: a model dropping posts every run
+      // is a prompt problem that would otherwise be invisible.
+      console.warn(
+        `growth.pack: dropped ${parsed.dropped} malformed post(s), kept ${pack.posts.length}`,
+      );
+    }
+  } catch (error) {
+    if (error instanceof UnparseablePackError) {
+      console.error(
+        `growth.pack unreadable (${error.reason})`,
+        JSON.stringify({ ...error.counts, truncated: result.truncated, model: result.model }),
+      );
+    }
+    throw error;
   }
 
   // The same net the ops content bot uses: the workspace's forbidden claims AND

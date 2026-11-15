@@ -50,7 +50,21 @@ export default async function GrowthLayout({
         </Link>
         <nav className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
           {NAV.map((item) => (
-            <Link key={item.href} href={item.href} className="text-muted hover:text-fg">
+            /*
+             * prefetch={false} is load-bearing (005 D-2). With prefetching on,
+             * Next fetches /results when Start renders — before the analysis the
+             * founder is about to run exists — and the redirect that follows the
+             * run can be served from that cached payload, showing the PREVIOUS
+             * run's problems under the URL just submitted. There are two screens
+             * here and they are one click apart; prefetching buys almost nothing
+             * and costs correctness at the exact moment the user is looking.
+             */
+            <Link
+              key={item.href}
+              href={item.href}
+              prefetch={false}
+              className="text-muted hover:text-fg"
+            >
               {item.label}
             </Link>
           ))}

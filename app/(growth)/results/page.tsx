@@ -142,6 +142,18 @@ export default async function ResultsPage() {
   const angles = pack ? parseAngles(pack.angles) : [];
   const posts = ((draftData ?? []) as DraftRow[]).map(toView);
 
+  /*
+   * 005 D-3. The latest pack is not necessarily this run's pack: a founder who
+   * analyses a second URL has a pack belonging to the first. Opening Posts on
+   * it, under a header naming the URL they just submitted, presents another
+   * product's posts as the result of this analysis.
+   *
+   * So posts lead only when they were written from the run on screen. Otherwise
+   * the problems lead — they are what this run actually produced — and the Posts
+   * tab says plainly where its posts came from instead of quietly implying.
+   */
+  const postsMatchRun = pack?.analyze_run_id === run.id;
+
   return (
     <div>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -150,12 +162,19 @@ export default async function ResultsPage() {
       </div>
 
       <ResultsTabs
-        defaultTab={posts.length > 0 ? "posts" : "problems"}
+        defaultTab={posts.length > 0 && postsMatchRun ? "posts" : "problems"}
         postCount={posts.length}
         problems={
           <ProblemsPanel run={run} hurdles={hurdles} hasPosts={posts.length > 0} />
         }
-        posts={<PostsPanel posts={posts} angles={angles} hurdleCount={hurdles.length} />}
+        posts={
+          <PostsPanel
+            posts={posts}
+            angles={angles}
+            hurdleCount={hurdles.length}
+            fromThisRun={postsMatchRun}
+          />
+        }
       />
     </div>
   );
@@ -274,10 +293,12 @@ function PostsPanel({
   posts,
   angles,
   hurdleCount,
+  fromThisRun,
 }: {
   posts: PackPostView[];
   angles: PackAngle[];
   hurdleCount: number;
+  fromThisRun: boolean;
 }) {
   if (posts.length === 0) {
     return (
@@ -312,6 +333,19 @@ function PostsPanel({
 
   return (
     <div>
+      {!fromThisRun && (
+        <div className="mt-6 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+          <p className="font-medium">These posts are from an earlier analysis.</p>
+          <p className="mt-1">
+            They were not written from the page above. Write a new set to get posts that
+            answer the problems on this run.
+          </p>
+          <div className="mt-3">
+            <GeneratePack label="Write posts for this page" />
+          </div>
+        </div>
+      )}
+
       <ul className="mt-6 flex flex-col gap-4">
         {posts.map((post) => (
           <PackPost key={post.id} post={post} />
