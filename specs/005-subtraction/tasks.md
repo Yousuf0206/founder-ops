@@ -21,10 +21,13 @@ as a *non-engineer completing the path*, and nobody has yet looked at the header
 hurdle or pasted a copied post. What is verified is everything a request can prove from
 outside — the routing, the redirects and the configuration.
 
-**Green on production:** SC-05 (health reports `ai.configured: true`, provider `groq`,
+**Green on production:** SC-01, SC-02, SC-03 and SC-04 — walked in a signed-in browser on
+2026-11-15 (Phase 6) — plus SC-05 (health reports `ai.configured: true`, provider `groq`,
 model `openai/gpt-oss-120b`, migrations applied), SC-06/SC-07's substance from 004, FR-01
 (`/` → 307 → `/login?next=/start`), and the legacy redirects.
-**Awaiting a live read by a human:** SC-01, SC-02, SC-03, SC-04.
+**Still open:** NFR-01 on a real phone, R3's non-engineer test, and four defects the walk
+turned up (D-1 to D-4 below) — one of which, the flaky pack, a first-time founder could
+meet before they ever see a post.
 
 ## Phase 0 — Audit what recovery already satisfies
 
@@ -162,21 +165,64 @@ Nothing in this milestone is *done* until a non-engineer finishes the path on pr
   that commit, `ai.configured: true` and `migrations.applied: true`. The signed-out probe
   also confirms the gate still holds: `/`, `/start` and `/results` each answer
   `307 → /login?next=/start`, so no AI work is reachable unauthenticated (R4).
-- [ ] **T-6.2** `[owner]` SC-01: sign in on production, paste `https://lumo-learn.com` on
-  Start, land on Results with hurdles, having touched neither Knowledge nor Claims.
-- [ ] **T-6.3** `[owner]` SC-02: generate from that run and see ≥5 usable posts in the Posts
-  tab, with no separate module to learn.
-- [ ] **T-6.4** `[owner]` SC-03: copy a post and paste it somewhere real.
-- [ ] **T-6.5** `[owner]` SC-04: confirm the header offers Start and Results only, and that
-  Advanced is a footer link.
-- [ ] **T-6.6** `[owner]` NFR-01: run T-6.2 through T-6.4 on a phone.
+Driven in the owner's signed-in Chrome on 2026-11-15, ~19:20–19:35 local, against the
+production deployment of `cab6276`.
+
+- [x] **T-6.2** SC-01: pasted `https://lumo-learn.com` on Start, landed on `/results` in
+  about ten seconds with four hurdles — no clear pricing numbers, limited social proof, a
+  crowded value proposition, a call to action not reinforced down the page. Knowledge and
+  Claims were never opened, and nothing asked for them.
+- [x] **T-6.3** SC-02: six posts in the Posts tab, each with its angle, hook, body, CTA and
+  hashtags, editable in place, in the same session and with no module to learn. The first
+  attempt at generating them **failed** — see D-1 — and the retry succeeded.
+- [x] **T-6.4** SC-03: pressed Copy post and pasted the result back into a text field. 611
+  characters arrived, opening with the post's own hook, so the clipboard carries the real
+  post rather than a label or a URL.
+- [x] **T-6.5** SC-04: the header reads `Start · Results`, nothing else, with Advanced a
+  small link in the footer. Both tabs switch instantly and the angles sit behind a
+  "Why these posts (4 angles)" disclosure.
+- [ ] **T-6.6** `[owner]` NFR-01: unverified. Two attempts to resize the browser window to
+  phone widths (390×844, then 412×900) reported success while `window.innerWidth` stayed
+  1358, so the viewport never narrowed and nothing about mobile was actually observed. This
+  needs a real phone, not a resized desktop window.
 - [ ] **T-6.7** `[owner]` R3's real test: hand the URL to a non-engineer with no
   instructions and watch whether they reach a copied post unaided.
 - [x] **T-6.8** Both legacy paths redirect on production rather than 404:
   `/hurdles` → `308` → `https://lumo-ops.vercel.app/results`, and `/pack` likewise.
 
-**Exit:** the milestone. Until T-6.2 through T-6.5 are green, R9 holds the freeze — the code
-being live changes nothing about that, which is the whole point of the status vocabulary.
+**Exit:** the milestone. SC-01 through SC-04 are now green on production, so what remains is
+T-6.6 (a phone) and T-6.7 (someone who has never seen it). R9 holds until those land, and
+the defects below are triaged.
+
+## Defects found during the walk
+
+None of these were introduced by the merge; the walk is simply the first time anyone looked.
+
+- [ ] **D-1 — pack generation is flaky on production.** The first "Write a new set of posts"
+  returned *"The pack came back unreadable. The failed run was logged — try again."*
+  (`UnparseablePackError`): the model's JSON did not parse. The identical retry, seconds
+  later, produced six posts. One failure in two attempts is not a flake a founder should
+  meet on their first run — the pack prompt asks for far more output than the analysis does,
+  so truncation against the provider's token ceiling is the first thing to check, before a
+  retry is added. The message itself behaved correctly (SC-07): it blamed the run, not the
+  page, and said it had been logged.
+- [ ] **D-2 — Results may render the previous run's hurdles immediately after an analysis.**
+  Right after the redirect, the Problems tab showed hurdles titled "Social proof is thin and
+  vague" and "Pricing information is missing concrete numbers". Minutes later, and on every
+  reload since, the same workspace shows four differently-titled hurdles. Both are plausible
+  readings of the same page, so one of those two renders did not come from the run the header
+  named. The screen is supposed to show the newest run for the workspace; it appears not to
+  have, once, at exactly the moment a founder is looking hardest.
+- [ ] **D-3 — a fresh analysis lands on a stale Posts tab.** Results defaults to Posts
+  whenever *any* pack exists, so the run above opened on six posts from an earlier pack —
+  one of them marked `published` — under a header naming the URL just analysed. Harmless
+  here because the URL was the same product; actively misleading if someone analyses a
+  different URL and is shown another product's posts as the result. The default should
+  consider whether the latest pack belongs to the latest run.
+- [ ] **D-4 — hashtags are duplicated in generated posts.** Several posts carry their
+  hashtag line inside the body *and* again in the hashtags field, so a copied post pastes
+  them twice. A prompt or assembly fix, not a UI one — but it lands in the copied text,
+  which is the product's output.
 
 ## Self-audit (constitution R10)
 
@@ -184,6 +230,7 @@ being live changes nothing about that, which is the whole point of the status vo
    entries gone, one top-level section demoted to a disclosure. Added: a tab strip, a copy
    button, and a test — the tab strip exists to retire a destination, and nothing added is a
    setting.
-2. *Can a tired founder finish URL → copy on production without a guide?* Locally, yes: one
-   field, one screen, posts in front with a Copy button on each. On production it is
-   unproven until Phase 6.
+2. *Can a tired founder finish URL → copy on production without a guide?* On production,
+   yes — the walk did it in about four minutes, one field, one screen, Copy on each post.
+   With one caveat worth keeping in view: it took two presses to get posts (D-1), and a
+   founder who met that failure on their first run would have no reason to press again.
