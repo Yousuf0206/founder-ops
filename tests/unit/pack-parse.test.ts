@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   MIN_PACK_POSTS,
+  PACK_PLATFORMS,
   normalizePost,
   parsePackOutput,
   UnparseablePackError,
@@ -60,10 +61,17 @@ describe("parsePackOutput — what survives", () => {
     expect(dropped).toBe(1);
   });
 
+  /**
+   * The cap rose from 8 to 12 in 007, with the platform count: six networks and
+   * eight posts means two networks get nothing, and which two would have been
+   * the model's whim. The behaviour under test is unchanged — a surplus is
+   * trimmed rather than refused — so the number here follows the constant
+   * rather than being asserted twice.
+   */
   it("trims a surplus post instead of refusing the pack", () => {
-    const { pack } = parsePackOutput(output(Array.from({ length: 11 }, () => post())));
+    const { pack } = parsePackOutput(output(Array.from({ length: 15 }, () => post())));
 
-    expect(pack.posts).toHaveLength(8);
+    expect(pack.posts).toHaveLength(12);
   });
 
   it("forgives the casing a model reaches for in a platform name", () => {
@@ -74,14 +82,27 @@ describe("parsePackOutput — what survives", () => {
     expect(pack.posts[0]?.platform).toBe("linkedin");
   });
 
+  /**
+   * TikTok used to be the example of a platform we refused, because 006 wrote
+   * for four networks. 007 writes for all six, so the post that must still be
+   * dropped is one for a network this product has never described.
+   */
   it("still refuses a platform that is not one of ours", () => {
     const posts = [
       ...Array.from({ length: MIN_PACK_POSTS }, () => post()),
-      post({ platform: "tiktok" as PackPost["platform"] }),
+      post({ platform: "threads" as PackPost["platform"] }),
     ];
     const { dropped } = parsePackOutput(output(posts));
 
     expect(dropped).toBe(1);
+  });
+
+  it("keeps a post for each of the six networks it writes for", () => {
+    const posts = PACK_PLATFORMS.map((platform) => post({ platform }));
+    const { pack, dropped } = parsePackOutput(output(posts));
+
+    expect(dropped).toBe(0);
+    expect(pack.posts).toHaveLength(PACK_PLATFORMS.length);
   });
 
   it("reads a pack out of a fenced code block", () => {

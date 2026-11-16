@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { LIVE_PUBLISH_PLATFORMS, requiresImage } from "@/lib/connectors/registry";
+import {
+  hasRequiredMedia,
+  LIVE_PUBLISH_PLATFORMS,
+  requiresImage,
+  requiresMedia,
+  requiresVideo,
+} from "@/lib/connectors/registry";
 import {
   growthPackSchema,
   isPublishablePlatform,
@@ -69,13 +75,42 @@ describe("isPublishablePlatform — the Meta gate", () => {
   });
 
   /**
-   * TikTok and YouTube publish video and nothing else, and this product writes
-   * words. They stay off the live list until there is a video to upload, so
-   * nothing can promise a founder a publish that could never happen (006).
+   * 007 flipped this, the way 006 flipped Instagram.
+   *
+   * 006 held TikTok and YouTube back because their APIs publish media and the
+   * product only had words. That reason was never "these networks are not
+   * worth it" — it was "there is nothing to upload" — so the fix was to give a
+   * founder somewhere to put a video (`video_url`) rather than to keep two
+   * networks permanently absent.
+   *
+   * The distinction 006 drew for Instagram is what makes this safe: being
+   * publishable and being publishable *now, with this post* stay two separate
+   * claims, so nothing offers a Publish button on a post the platform will
+   * refuse.
    */
-  it("holds back the video-only networks", () => {
-    expect(isPublishablePlatform("tiktok")).toBe(false);
-    expect(isPublishablePlatform("youtube")).toBe(false);
+  it("lets the video networks through now that a post can carry a video", () => {
+    expect(isPublishablePlatform("tiktok")).toBe(true);
+    expect(isPublishablePlatform("youtube")).toBe(true);
+  });
+
+  /**
+   * The claim that replaced the exclusion. YouTube cannot publish words by any
+   * means — its API has no endpoint for a text post — and TikTok will take
+   * either an image or a video, which is why the registry holds an enum rather
+   * than the boolean 006 could get away with.
+   */
+  it("says what each video network needs before a post can go out", () => {
+    expect(requiresVideo("youtube")).toBe(true);
+    expect(requiresMedia("tiktok")).toBe(true);
+    expect(hasRequiredMedia("youtube", { videoUrl: "" })).toBe(false);
+    expect(hasRequiredMedia("youtube", { videoUrl: "https://cdn/x.mp4" })).toBe(true);
+    // TikTok takes either, and nothing is not either.
+    expect(hasRequiredMedia("tiktok", { imageUrl: "https://cdn/x.jpg" })).toBe(true);
+    expect(hasRequiredMedia("tiktok", { videoUrl: "https://cdn/x.mp4" })).toBe(true);
+    expect(hasRequiredMedia("tiktok", {})).toBe(false);
+    // And the networks that publish words keep publishing words.
+    expect(requiresMedia("linkedin")).toBe(false);
+    expect(hasRequiredMedia("linkedin", {})).toBe(true);
   });
 });
 
@@ -99,8 +134,16 @@ describe("growthPackSchema", () => {
   });
 
   it("refuses a platform the pack has no brief for", () => {
-    // A post for a platform we never described would be written blind.
-    expect(packPostSchema.safeParse(post({ platform: "tiktok" as never })).success).toBe(false);
+    // A post for a platform we never described would be written blind. Every
+    // one of the six now HAS a brief (PLATFORM_NORMS), so the platform that
+    // tests this has to be one that does not exist at all.
+    expect(packPostSchema.safeParse(post({ platform: "threads" as never })).success).toBe(false);
+  });
+
+  it("now has a brief for every network it writes for", () => {
+    for (const platform of PACK_PLATFORMS) {
+      expect(packPostSchema.safeParse(post({ platform })).success).toBe(true);
+    }
   });
 
   it("refuses a post with no topic — it would file as an unnamed draft", () => {

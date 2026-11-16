@@ -34,6 +34,7 @@ const payload: ContentPayload = {
   cta: "Try a free lesson",
   visual_plan: "",
   image_url: "",
+  video_url: "",
 };
 
 function stub(responses: { status?: number; body: unknown }[]) {

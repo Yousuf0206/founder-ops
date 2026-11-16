@@ -3,9 +3,7 @@ import Link from "next/link";
 import { isOwner } from "@/lib/auth/session";
 import { requireSession } from "@/lib/knowledge/repo";
 import { createSupabaseServerClient } from "@/lib/db/server";
-import { isLinkedInConfigured } from "@/lib/connectors/linkedin/oauth";
-import { isMetaConfigured } from "@/lib/connectors/meta/oauth";
-import { isXConfigured } from "@/lib/connectors/x/oauth";
+import { platformConfigured } from "@/lib/connectors/configured";
 import { LIVE_PUBLISH_PLATFORMS } from "@/lib/connectors/registry";
 import { PLATFORM_LABELS, SOCIAL_PLATFORMS } from "@/lib/content/platforms";
 import { disconnectAccountAction, setAccountAutoAction } from "./actions";
@@ -22,25 +20,20 @@ type AccountRow = {
 };
 
 /**
- * Whether the SERVER has credentials for a platform (006).
+ * What an owner should know about a platform BEFORE they connect it (007).
  *
- * Separate from whether a connector exists: an app with no META_APP_ID can
- * still see Facebook on this list, and telling the owner it is "not configured
- * on the server" is more use than hiding the row and leaving them to guess.
+ * Each of these is a fact that otherwise shows up as a mystery after the first
+ * post: a caption with no image is refused, a TikTok post from an unaudited app
+ * is invisible, a YouTube post needs a file. Saying them here costs three lines
+ * and saves a support conversation each.
  */
-function platformConfigured(platform: string): boolean {
-  switch (platform) {
-    case "linkedin":
-      return isLinkedInConfigured();
-    case "facebook":
-    case "instagram":
-      return isMetaConfigured();
-    case "x":
-      return isXConfigured();
-    default:
-      return false;
-  }
-}
+const PLATFORM_CAVEATS: Record<string, string> = {
+  instagram: "needs an image URL on each post, and a professional account linked to the Page",
+  x: "posting needs a paid X API tier",
+  tiktok:
+    "needs a video or image URL on each post, from a domain verified in your TikTok app — and posts stay private until TikTok audits the app",
+  youtube: "needs a video URL on each post; YouTube has no API for text posts",
+};
 
 export default async function ConnectionsPage({
   searchParams,
@@ -73,6 +66,11 @@ export default async function ConnectionsPage({
       <p className="mt-1 text-sm text-muted">
         Publishing goes only to accounts connected here, through each platform&apos;s official
         sign-in. Tokens are encrypted and never shown.
+      </p>
+      <p className="mt-2 text-sm text-muted">
+        Every network can publish since 7.0.0. Three of them need media on the post itself —
+        Instagram an image, YouTube a video, TikTok either — and a post without it is refused
+        before you approve it rather than after. Copy still works everywhere.
       </p>
 
       {params.error && (
@@ -148,25 +146,26 @@ export default async function ConnectionsPage({
             {SOCIAL_PLATFORMS.map((platform) => {
               const live = (LIVE_PUBLISH_PLATFORMS as readonly string[]).includes(platform);
               const ready = live && keyConfigured && platformConfigured(platform);
+              const caveat = PLATFORM_CAVEATS[platform];
               return (
                 <li key={platform} className="flex items-center justify-between gap-4 text-sm">
-                  <span>{PLATFORM_LABELS[platform]}</span>
+                  <span>
+                    {PLATFORM_LABELS[platform]}
+                    {caveat && <span className="ml-2 text-xs text-muted">{caveat}</span>}
+                  </span>
                   {ready ? (
                     // A plain anchor: this starts a redirect flow and must never be prefetched.
                     <a
                       href={`/api/ops/connections/${platform}`}
-                      className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white"
+                      className="shrink-0 rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white"
                     >
                       Connect
                     </a>
                   ) : (
-                    <span className="text-xs text-muted">
+                    <span className="shrink-0 text-xs text-muted">
                       {live
                         ? "not configured on the server"
-                        : // TikTok and YouTube publish video and nothing else
-                          // (006); saying "yet" would promise something the
-                          // API cannot do with words.
-                          "copy only — these networks publish video"}
+                        : "drafts only — no publish connector"}
                     </span>
                   )}
                 </li>

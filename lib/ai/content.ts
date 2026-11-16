@@ -48,11 +48,29 @@ export const contentPayloadSchema = z.object({
    * made picture, and only a human puts it here. It matters because Instagram
    * has no caption-only post: without an image there is literally no API call
    * that publishes an Instagram post. On Facebook it is optional — with one the
-   * post becomes a photo post — and LinkedIn and X ignore it.
+   * post becomes a photo post — and LinkedIn and X ignore it. On TikTok it
+   * makes the post a photo post (007).
    *
    * Defaulted, so every draft written before this field existed still parses.
    */
   image_url: z.string().default(""),
+  /**
+   * A public video URL to publish with the post (007).
+   *
+   * The same bargain as `image_url`, for the two networks that take nothing
+   * else: YouTube's API has no endpoint that publishes words, and TikTok is a
+   * video platform that will also accept photos. `script` and `visual_plan`
+   * describe the video; this is the made video, and only a human puts it here.
+   *
+   * YouTube streams the bytes from this URL, so it must be publicly reachable
+   * and must report its size. TikTok fetches it itself, which additionally
+   * means the URL has to sit on a domain verified in the TikTok developer
+   * portal — an owner setup step, documented in docs/connectors.md.
+   *
+   * Defaulted, for the same reason as `image_url`: drafts written before today
+   * must still parse.
+   */
+  video_url: z.string().default(""),
 });
 
 export type ContentPayload = z.infer<typeof contentPayloadSchema>;

@@ -150,6 +150,10 @@ export async function GET() {
       ),
       meta: Boolean(process.env.META_APP_ID && process.env.META_APP_SECRET),
       x: Boolean(process.env.X_CLIENT_ID && process.env.X_CLIENT_SECRET),
+      // 007. As above: set, not working. An unaudited TikTok app posts
+      // privately, and an unverified Google app only works for its test users.
+      tiktok: Boolean(process.env.TIKTOK_CLIENT_KEY && process.env.TIKTOK_CLIENT_SECRET),
+      youtube: Boolean(process.env.YOUTUBE_CLIENT_ID && process.env.YOUTUBE_CLIENT_SECRET),
       tokenSealing: Boolean(process.env.CONNECTOR_TOKEN_KEY),
       cron: Boolean(process.env.CRON_SECRET),
     },

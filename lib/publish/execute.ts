@@ -4,8 +4,12 @@ import { contentPayloadSchema, type ContentPayload } from "@/lib/ai/content";
 import { ConnectorError } from "@/lib/connectors/errors";
 import { publishToLinkedIn } from "@/lib/connectors/linkedin/publish";
 import { publishToFacebookPage, publishToInstagram } from "@/lib/connectors/meta/publish";
+import { publishToTikTok } from "@/lib/connectors/tiktok/publish";
+import { refreshTikTokToken } from "@/lib/connectors/tiktok/oauth";
 import { publishToX } from "@/lib/connectors/x/publish";
 import { refreshXToken } from "@/lib/connectors/x/oauth";
+import { publishToYouTube } from "@/lib/connectors/youtube/publish";
+import { refreshYouTubeToken } from "@/lib/connectors/youtube/oauth";
 import { decryptToken, encryptToken, TokenDecryptError, tokenContext } from "@/lib/connectors/tokens";
 import { createSupabaseAdminClient } from "@/lib/db/server";
 import { isEmailConfigured, notifyTeamMember } from "@/lib/email/notify";
@@ -68,6 +72,18 @@ async function publishVia(platform: string, input: PublishInput) {
       });
     case "x":
       return publishToX({ accessToken: input.accessToken, payload: input.payload });
+    case "tiktok":
+      return publishToTikTok({
+        accessToken: input.accessToken,
+        openId: input.externalAccountId,
+        payload: input.payload,
+      });
+    case "youtube":
+      return publishToYouTube({
+        accessToken: input.accessToken,
+        channelId: input.externalAccountId,
+        payload: input.payload,
+      });
     default:
       throw new ConnectorError("misconfigured", `There is no publish connector for ${platform} yet.`);
   }
@@ -88,19 +104,48 @@ type AccountRow = {
 const REFRESH_WINDOW_MS = 5 * 60 * 1000;
 
 /**
+ * Platforms whose access tokens are shorter-lived than the gap between
+ * approving a post and a cron run sending it, with the call that renews one
+ * (006 for X; 007 adds the two video networks).
+ *
+ *   x        ~2 hours, refresh token ROTATES on use
+ *   tiktok   ~2 hours, refresh token ROTATES on use
+ *   youtube  ~1 hour, refresh token is long-lived and does NOT rotate
+ *
+ * LinkedIn and Meta are deliberately absent: their tokens last 60 days, so for
+ * them an expired token really does mean "reconnect", and saying so is honest
+ * rather than lazy. A platform missing from this map keeps that behaviour.
+ */
+type RefreshedTokens = {
+  accessToken: string;
+  refreshToken: string | null;
+  expiresAt: Date | null;
+  refreshExpiresAt?: Date | null;
+};
+
+const TOKEN_REFRESHERS: Record<string, (refreshToken: string) => Promise<RefreshedTokens>> = {
+  x: (refreshToken) => refreshXToken(refreshToken),
+  tiktok: (refreshToken) => refreshTikTokToken(refreshToken),
+  youtube: (refreshToken) => refreshYouTubeToken(refreshToken),
+};
+
+/**
  * Returns a usable access token, refreshing first when the platform needs it
  * (006).
  *
  * LinkedIn and Meta hand out tokens that outlive any single job — 60 days — so
- * for them an expired token genuinely means "reconnect". X does not: its access
- * tokens last about two hours, which is shorter than the gap between approving
- * a post and a scheduled run sending it. Without a refresh here, scheduled
- * posting to X would fail essentially always, and the founder would be told to
- * reconnect an account that is perfectly healthy.
+ * for them an expired token genuinely means "reconnect". X, TikTok and YouTube
+ * do not: their access tokens last an hour or two, which is shorter than the
+ * gap between approving a post and a scheduled run sending it. Without a
+ * refresh here, scheduled posting to those three would fail essentially always,
+ * and the founder would be told to reconnect an account that is perfectly
+ * healthy.
  *
- * X rotates the refresh token on every use, so the new one is written back
- * before it is used. Losing that write means the next refresh fails, which is
- * why it happens before the publish rather than after it.
+ * X and TikTok rotate the refresh token on every use, so the new one is written
+ * back before it is used. Losing that write means the next refresh fails, which
+ * is why it happens before the publish rather than after it. Google does not
+ * rotate and often returns no refresh token at all, so the stored one is kept
+ * rather than overwritten with null.
  */
 async function freshAccessToken(admin: Admin, account: AccountRow): Promise<string> {
   if (!account.access_token_encrypted) {
@@ -111,8 +156,10 @@ async function freshAccessToken(admin: Admin, account: AccountRow): Promise<stri
   const expiresAt = account.expires_at ? new Date(account.expires_at).getTime() : null;
   const expiringSoon = expiresAt !== null && expiresAt - Date.now() <= REFRESH_WINDOW_MS;
 
-  if (account.platform === "x" && expiringSoon && account.refresh_token_encrypted) {
-    const refreshed = await refreshXToken(decryptToken(account.refresh_token_encrypted, context));
+  const refresher = TOKEN_REFRESHERS[account.platform];
+
+  if (refresher && expiringSoon && account.refresh_token_encrypted) {
+    const refreshed = await refresher(decryptToken(account.refresh_token_encrypted, context));
 
     const { error } = await admin
       .from("connected_accounts")
@@ -122,12 +169,17 @@ async function freshAccessToken(admin: Admin, account: AccountRow): Promise<stri
           ? encryptToken(refreshed.refreshToken, context)
           : account.refresh_token_encrypted,
         expires_at: refreshed.expiresAt?.toISOString() ?? null,
+        ...(refreshed.refreshExpiresAt
+          ? { refresh_expires_at: refreshed.refreshExpiresAt.toISOString() }
+          : {}),
       })
       .eq("id", account.id);
 
     // A refreshed token that could not be stored still publishes this job, but
     // the next run would use the old rotated-away one. Say so loudly.
-    if (error) console.error("Could not store the refreshed X token:", error.message);
+    if (error) {
+      console.error(`Could not store the refreshed ${account.platform} token:`, error.message);
+    }
 
     return refreshed.accessToken;
   }
@@ -209,11 +261,14 @@ export async function executePublishJob(jobId: string): Promise<ExecuteOutcome> 
       p_job_id: jobId,
       p_published: true,
       p_external_id: receipt.externalId,
+      // Nullable since 007: TikTok publishes asynchronously, so a post it has
+      // accepted but not yet made public has a platform id and no link. The
+      // receipt says what is true rather than inventing a URL.
       p_permalink: receipt.permalink,
     });
     if (finishError) throw finishError;
 
-    return { jobId, result: "published", permalink: receipt.permalink };
+    return { jobId, result: "published", permalink: receipt.permalink ?? undefined };
   } catch (error) {
     const message =
       error instanceof ConnectorError || error instanceof TokenDecryptError

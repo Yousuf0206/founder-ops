@@ -29,27 +29,40 @@ import { hurdleSchema, type GrowthGoal, type Hurdle } from "@/lib/growth/analyze
 /**
  * The platforms a pack writes for.
  *
- * These are the four with a live connector (lib/connectors/registry) — 006 added
- * Facebook, Instagram and X to LinkedIn. Writing for a platform is still not the
- * same as being able to publish to it: `hasLiveConnector` remains the single
- * gate on reaching a publish job, and an Instagram post additionally needs an
- * image before Instagram will take it.
+ * All six, as of 007: every network now has a connector
+ * (lib/connectors/registry). 006 wrote for four and left TikTok and YouTube out
+ * because a pack of eight posts split six ways is six thin posts — so the
+ * maximum rose with the platform count rather than the networks staying absent.
  *
- * TikTok and YouTube are deliberately absent from publishing but could be
- * written for; they are left out here too, because a pack of eight posts split
- * six ways is six thin posts rather than a usable set. They come back when
- * there is video to go with them.
+ * Writing for a platform is still not the same as being able to publish to it.
+ * `hasLiveConnector` remains the single gate on reaching a publish job, and
+ * three platforms additionally need media on the post itself before they will
+ * take it: an image for Instagram, a video for YouTube, either for TikTok.
+ * `PLATFORM_MEDIA` in the registry is what says so, and a post missing it is
+ * refused before approval rather than at the platform.
+ *
+ * The two video networks are worth writing for even when the founder has no
+ * video: the pack produces the script and the shot list, which is the thing
+ * they would otherwise have to write before they could film anything.
  */
 export const PACK_PLATFORMS = [
   "linkedin",
   "instagram",
   "facebook",
   "x",
+  "tiktok",
+  "youtube",
 ] as const satisfies readonly SocialPlatform[];
 
-/** At least five posts in a pack; more is fine, endless is not. */
+/**
+ * At least five posts in a pack; more is fine, endless is not.
+ *
+ * The maximum rose from 8 to 12 in 007, with the platform count: six networks
+ * and eight posts means two networks get nothing, and which two would be the
+ * model's whim rather than a decision.
+ */
 export const MIN_PACK_POSTS = 5;
-const MAX_PACK_POSTS = 8;
+const MAX_PACK_POSTS = 12;
 
 const PACK_ROLE = `You are a growth content strategist. You are given a product's own facts and a ranked list of the growth hurdles standing between it and its market.
 
@@ -60,7 +73,7 @@ Produce a growth pack in two parts.
    - hurdle: which hurdle it addresses, quoting the hurdle's title.
    - rationale: why this angle answers that hurdle.
 
-2. posts — between 5 and 8 posts, each written from one of your angles. Spread them across the platforms you are given rather than writing them all for one. Give each one:
+2. posts — between 6 and 12 posts, each written from one of your angles. Write at least one for EVERY platform you are given, and spread the rest across them rather than writing them all for one. Give each one:
    - platform: exactly one of "linkedin", "instagram", "facebook", "x".
    - angle: the angle it comes from, quoted exactly from your angles list.
    - topic: a short label for the post, under 120 characters.

@@ -25,9 +25,18 @@ export type PackPostView = {
   hashtags: string[];
   angle: string;
   publishable: boolean;
-  /** This platform refuses a post without an image — Instagram (006). */
-  needsImage: boolean;
+  /** Media fields this platform can actually use (007, lib/connectors/registry). */
+  acceptsImage: boolean;
+  acceptsVideo: boolean;
   imageUrl: string;
+  videoUrl: string;
+  /**
+   * Why this post cannot be published yet, when what is missing is media its
+   * platform requires: Instagram an image, YouTube a video, TikTok either.
+   * Null when the post is ready. The sentence comes from the registry, so this
+   * card and the connector's refusal say the same words.
+   */
+  mediaReason: string | null;
   edited: boolean;
 };
 
@@ -48,15 +57,20 @@ export function PackPost({ post }: { post: PackPostView }) {
             /* Stated where it matters rather than discovered at the publish
                step. lib/connectors/registry.ts is what decides it. */
             <span className="rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-xs text-amber-900">
-              Copy only — this network publishes video
+              Copy only — no publish connector for this network
             </span>
           )}
-          {post.publishable && post.needsImage && !post.imageUrl && (
-            /* 006: Instagram has no caption-only post. Saying so here, on the
-               post, is the difference between a founder adding an image and a
+          {post.publishable && post.mediaReason && (
+            /* 006 for Instagram, 007 for TikTok and YouTube: these platforms
+               have no endpoint that publishes words alone. Saying so here, on
+               the post, is the difference between a founder adding a URL and a
                founder meeting a platform refusal after approving. */
             <span className="rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-xs text-amber-900">
-              Needs an image to publish
+              {post.acceptsVideo && !post.acceptsImage
+                ? "Needs a video to publish"
+                : post.acceptsVideo
+                  ? "Needs a video or image to publish"
+                  : "Needs an image to publish"}
             </span>
           )}
           {post.edited && <span className="text-xs text-muted">edited</span>}
@@ -97,7 +111,23 @@ export function PackPost({ post }: { post: PackPostView }) {
 
           <Field label="Call to action" name="cta" defaultValue={post.cta} maxLength={500} />
 
-          {post.needsImage && (
+          {post.acceptsVideo && (
+            <div className="flex flex-col gap-1">
+              <Field
+                label="Video URL"
+                name="video_url"
+                defaultValue={post.videoUrl}
+                maxLength={2000}
+              />
+              <p className="text-xs text-muted">
+                A public link to the finished video. YouTube uploads it; TikTok fetches it
+                itself, which means the link has to be on a domain verified in your TikTok
+                app. Leave it empty and copy the script instead.
+              </p>
+            </div>
+          )}
+
+          {post.acceptsImage && (
             <div className="flex flex-col gap-1">
               <Field
                 label="Image URL"
@@ -106,8 +136,11 @@ export function PackPost({ post }: { post: PackPostView }) {
                 maxLength={2000}
               />
               <p className="text-xs text-muted">
-                Instagram cannot publish a caption on its own. Paste a public link to the
-                image — or leave it empty and copy the caption instead.
+                {post.acceptsVideo
+                  ? "Used instead of a video, as a photo post."
+                  : "Instagram cannot publish a caption on its own."}{" "}
+                Paste a public link to the image — or leave it empty and copy the words
+                instead.
               </p>
             </div>
           )}

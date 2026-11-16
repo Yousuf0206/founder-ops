@@ -5,10 +5,12 @@ import { getOpsSession, isOwner } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/db/server";
 import { platformLabel } from "@/lib/content/platforms";
 import { isPublishablePlatform } from "@/lib/growth/pack";
-import { LIVE_PUBLISH_PLATFORMS } from "@/lib/connectors/registry";
-import { isLinkedInConfigured } from "@/lib/connectors/linkedin/oauth";
-import { isMetaConfigured } from "@/lib/connectors/meta/oauth";
-import { isXConfigured } from "@/lib/connectors/x/oauth";
+import { platformConfigured } from "@/lib/connectors/configured";
+import {
+  hasRequiredMedia,
+  LIVE_PUBLISH_PLATFORMS,
+  mediaRequirementReason,
+} from "@/lib/connectors/registry";
 import type { PublishJobStatus } from "@/lib/publish/state";
 import { PublishPost, type PublishPostView } from "./publish-post";
 import { RetryJob } from "./retry-job";
@@ -72,21 +74,6 @@ function previewBody(payload: unknown): string {
   return [text("hook"), text("script"), text("cta"), hashtags.join(" ")]
     .filter((part) => part.trim().length > 0)
     .join("\n\n");
-}
-
-/** Whether this deployment holds credentials for a platform (006). */
-function serverConfigured(platform: string): boolean {
-  switch (platform) {
-    case "linkedin":
-      return isLinkedInConfigured();
-    case "facebook":
-    case "instagram":
-      return isMetaConfigured();
-    case "x":
-      return isXConfigured();
-    default:
-      return false;
-  }
 }
 
 export default async function InstantPublishPage({
@@ -155,14 +142,34 @@ export default async function InstantPublishPage({
   }
   const target = connected.find((a) => isPublishablePlatform(a.platform)) ?? null;
 
-  const posts: PublishPostView[] = ((draftData ?? []) as DraftRow[]).map((draft) => ({
-    id: draft.id,
-    topic: draft.topic,
-    platform: draft.platform,
-    status: draft.status,
-    body: previewBody(draft.payload_json),
-    publishable: isPublishablePlatform(draft.platform),
-  }));
+  const posts: PublishPostView[] = ((draftData ?? []) as DraftRow[]).map((draft) => {
+    /*
+     * 007: three platforms cannot publish the words alone — Instagram needs an
+     * image, YouTube a video, TikTok either. The check happens HERE, before the
+     * Approve button exists, because the alternative is a founder approving a
+     * post and then being refused by the platform for something they could have
+     * fixed in ten seconds on the Results screen.
+     *
+     * The connectors enforce the same rule regardless. This is the courtesy;
+     * that is the guarantee.
+     */
+    const payload = (draft.payload_json ?? {}) as Record<string, unknown>;
+    const url = (key: string) => (typeof payload[key] === "string" ? (payload[key] as string) : "");
+    const mediaReady = hasRequiredMedia(draft.platform, {
+      imageUrl: url("image_url"),
+      videoUrl: url("video_url"),
+    });
+
+    return {
+      id: draft.id,
+      topic: draft.topic,
+      platform: draft.platform,
+      status: draft.status,
+      body: previewBody(draft.payload_json),
+      publishable: isPublishablePlatform(draft.platform),
+      mediaReason: mediaReady ? null : mediaRequirementReason(draft.platform),
+    };
+  });
 
   const jobs = (jobData ?? []) as unknown as JobRow[];
   const cap = (workspace as { daily_publish_cap?: number } | null)?.daily_publish_cap ?? null;
@@ -175,7 +182,7 @@ export default async function InstantPublishPage({
    * platform round trip that ends in "not configured on the server".
    */
   const connectable = LIVE_PUBLISH_PLATFORMS.filter(
-    (platform) => serverConfigured(platform) && !accountFor.has(platform),
+    (platform) => platformConfigured(platform) && !accountFor.has(platform),
   );
 
   return (

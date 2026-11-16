@@ -5,7 +5,7 @@ import { getOpsSession } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/db/server";
 import { hurdleSchema, type Hurdle } from "@/lib/growth/analyze";
 import { packAngleSchema, isPublishablePlatform, type PackAngle } from "@/lib/growth/pack";
-import { requiresImage } from "@/lib/connectors/registry";
+import { acceptsImage, acceptsVideo, hasRequiredMedia, mediaRequirementReason } from "@/lib/connectors/registry";
 import { GeneratePack } from "./generate-pack";
 import { PackPost, type PackPostView } from "./pack-post";
 import { ResultsTabs } from "./results-tabs";
@@ -94,8 +94,18 @@ function toView(draft: DraftRow): PackPostView {
       : [],
     angle: str("angle"),
     publishable: isPublishablePlatform(draft.platform),
-    needsImage: requiresImage(draft.platform),
+    // 007: what this platform will take, and whether this post has it. The
+    // card shows only the fields its own platform can use.
+    acceptsImage: acceptsImage(draft.platform),
+    acceptsVideo: acceptsVideo(draft.platform),
     imageUrl: str("image_url"),
+    videoUrl: str("video_url"),
+    mediaReason: hasRequiredMedia(draft.platform, {
+      imageUrl: str("image_url"),
+      videoUrl: str("video_url"),
+    })
+      ? null
+      : mediaRequirementReason(draft.platform),
     edited: draft.original_payload !== null,
   };
 }
