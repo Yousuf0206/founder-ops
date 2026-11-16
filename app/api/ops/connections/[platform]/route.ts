@@ -10,16 +10,20 @@ import {
   OAUTH_STATE_COOKIE,
   OAUTH_STATE_TTL_MS,
 } from "@/lib/connectors/oauth-state";
-import { isLinkedInConfigured, linkedInAuthorizationUrl } from "@/lib/connectors/linkedin/oauth";
-import { isMetaConfigured, metaAuthorizationUrl } from "@/lib/connectors/meta/oauth";
-import { isXConfigured, xAuthorizationUrl } from "@/lib/connectors/x/oauth";
+import { configurationHint } from "@/lib/connectors/configured";
+import { linkedInAuthorizationUrl } from "@/lib/connectors/linkedin/oauth";
+import { metaAuthorizationUrl } from "@/lib/connectors/meta/oauth";
+import { tikTokAuthorizationUrl } from "@/lib/connectors/tiktok/oauth";
+import { xAuthorizationUrl } from "@/lib/connectors/x/oauth";
+import { youTubeAuthorizationUrl } from "@/lib/connectors/youtube/oauth";
 import { hasLiveConnector } from "@/lib/connectors/registry";
 import { TokenKeyError } from "@/lib/connectors/tokens";
 import { requestOrigin } from "@/lib/http/origin";
 
 /**
  * GET /api/ops/connections/:platform — starts an owner's OAuth connect flow
- * (002 T2.3; 006 extends it past LinkedIn). Browser navigation, so failures
+ * (002 T2.3; 006 extends it past LinkedIn, 007 to all six). Browser
+ * navigation, so failures
  * redirect back with a readable message rather than returning JSON.
  *
  * The platform list is `lib/connectors/registry`, not a list here: a second
@@ -37,24 +41,31 @@ function back(request: NextRequest, message: string) {
   return NextResponse.redirect(url);
 }
 
-/** Which env vars a platform needs, and the sentence to say when they are missing. */
-function configurationError(platform: string): string | null {
+/**
+ * The platform's own authorization URL. One switch, so adding a network is a
+ * case here and a module under lib/connectors, and nothing else.
+ */
+function authorizationUrl(
+  platform: string,
+  input: { state: string; redirectUri: string; pkce: { verifier: string; challenge: string } | null },
+): string {
   switch (platform) {
     case "linkedin":
-      return isLinkedInConfigured()
-        ? null
-        : "LinkedIn is not configured on the server. Set LINKEDIN_CLIENT_ID, LINKEDIN_CLIENT_SECRET, and LINKEDIN_API_VERSION.";
-    case "facebook":
-    case "instagram":
-      return isMetaConfigured()
-        ? null
-        : "Meta is not configured on the server. Set META_APP_ID and META_APP_SECRET.";
+      return linkedInAuthorizationUrl({ state: input.state, redirectUri: input.redirectUri });
     case "x":
-      return isXConfigured()
-        ? null
-        : "X is not configured on the server. Set X_CLIENT_ID and X_CLIENT_SECRET.";
+      return xAuthorizationUrl({
+        state: input.state,
+        redirectUri: input.redirectUri,
+        challenge: input.pkce!.challenge,
+      });
+    case "tiktok":
+      return tikTokAuthorizationUrl({ state: input.state, redirectUri: input.redirectUri });
+    case "youtube":
+      return youTubeAuthorizationUrl({ state: input.state, redirectUri: input.redirectUri });
     default:
-      return `Publishing to ${platform} is not available yet. Drafts still work.`;
+      // Facebook and Instagram share one Meta login; the platform in the
+      // redirect URI is what decides which asset the callback keeps.
+      return metaAuthorizationUrl({ state: input.state, redirectUri: input.redirectUri });
   }
 }
 
@@ -70,11 +81,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     return back(request, `Publishing to ${platform} is not available yet. Drafts still work.`);
   }
 
-  const misconfigured = configurationError(platform);
+  const misconfigured = configurationHint(platform);
   if (misconfigured) return back(request, misconfigured);
 
   // X requires PKCE. The verifier rides in the signed state cookie; only its
   // hash goes to the platform.
+  //
+  // TikTok deliberately does not: its own documentation applies PKCE to
+  // desktop and mobile and has the web flow rely on the client secret staying
+  // server-side plus a state token, which is what the signed cookie below is.
   const pkce = platform === "x" ? createPkcePair() : null;
 
   let state: string;
@@ -93,14 +108,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   const redirectUri = `${await requestOrigin()}/api/ops/connections/${platform}/callback`;
 
-  const authorizeUrl =
-    platform === "linkedin"
-      ? linkedInAuthorizationUrl({ state, redirectUri })
-      : platform === "x"
-        ? xAuthorizationUrl({ state, redirectUri, challenge: pkce!.challenge })
-        : // Facebook and Instagram share one Meta login; the platform in the
-          // redirect URI is what decides which asset the callback keeps.
-          metaAuthorizationUrl({ state, redirectUri });
+  const authorizeUrl = authorizationUrl(platform, { state, redirectUri, pkce });
 
   const response = NextResponse.redirect(authorizeUrl);
 

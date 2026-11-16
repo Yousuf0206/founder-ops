@@ -23,6 +23,7 @@ const payload: ContentPayload = {
   cta: "Try a free lesson",
   visual_plan: "",
   image_url: "",
+  video_url: "",
 };
 
 const env = { X_CLIENT_ID: "client", X_CLIENT_SECRET: "secret" };

@@ -25,6 +25,13 @@ export type PublishPostView = {
   status: string;
   body: string;
   publishable: boolean;
+  /**
+   * Why this post cannot be published yet, when the reason is media its
+   * platform requires and the post does not have (007). Null when the post is
+   * fine. The sentence comes from the registry, so the screen and the
+   * connector's refusal say the same words.
+   */
+  mediaReason: string | null;
 };
 
 function Submit({ label, pendingLabel }: { label: string; pendingLabel: string }) {
@@ -62,6 +69,9 @@ export function PublishPost({
   const state = publishState.error || publishState.done ? publishState : approveState;
   const awaitingApproval = post.status === "awaiting_approval" || post.status === "draft";
   const approved = post.status === "approved";
+  // A post missing the media its platform requires is certain to be refused,
+  // so it is not offered an Approve or a Publish button at all (007).
+  const ready = post.publishable && !post.mediaReason;
 
   return (
     <li className="rounded-lg border border-line bg-surface p-4">
@@ -72,6 +82,11 @@ export function PublishPost({
         {!post.publishable && (
           <span className="rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-xs text-amber-900">
             Draft only until {post.platform} publishing is live
+          </span>
+        )}
+        {post.publishable && post.mediaReason && (
+          <span className="rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-xs text-amber-900">
+            Needs media before it can be sent
           </span>
         )}
       </div>
@@ -86,15 +101,21 @@ export function PublishPost({
       )}
       {state.done && <p className="mt-3 text-sm text-green-700">{state.done}</p>}
 
+      {post.publishable && post.mediaReason && (
+        <p className="mt-3 rounded-md border border-line bg-ground p-3 text-sm text-muted">
+          {post.mediaReason}
+        </p>
+      )}
+
       <div className="mt-4 flex flex-wrap items-center gap-3">
-        {awaitingApproval && post.publishable && (
+        {awaitingApproval && ready && (
           <form action={approve}>
             <input type="hidden" name="draft_id" value={post.id} />
             <Submit label="Approve" pendingLabel="Approving…" />
           </form>
         )}
 
-        {approved && post.publishable && accountId && (
+        {approved && ready && accountId && (
           <form action={publish}>
             <input type="hidden" name="draft_id" value={post.id} />
             <input type="hidden" name="account_id" value={accountId} />
@@ -105,7 +126,7 @@ export function PublishPost({
           </form>
         )}
 
-        {approved && post.publishable && !accountId && (
+        {approved && ready && !accountId && (
           <p className="text-sm text-muted">Approved. Connect a channel above to send it.</p>
         )}
 
@@ -113,8 +134,14 @@ export function PublishPost({
 
         {awaitingApproval && !post.publishable && (
           <p className="text-sm text-muted">
-            Edit it on Pack and copy it out by hand — nothing here can post it yet.
+            Edit it on Results and copy it out by hand — nothing here can post it yet.
           </p>
+        )}
+
+        {awaitingApproval && post.publishable && post.mediaReason && (
+          <a href="/results" className="text-sm underline">
+            Add it on Results
+          </a>
         )}
       </div>
     </li>

@@ -30,6 +30,7 @@ const payload = {
   cta: "Try a free lesson",
   visual_plan: "",
   image_url: "",
+  video_url: "",
 };
 
 function capture(response: Response) {

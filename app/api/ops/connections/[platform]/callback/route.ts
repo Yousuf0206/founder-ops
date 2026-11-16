@@ -5,7 +5,9 @@ import { createSupabaseServerClient } from "@/lib/db/server";
 import { ConnectorError } from "@/lib/connectors/errors";
 import { exchangeLinkedInCode, fetchLinkedInIdentity } from "@/lib/connectors/linkedin/oauth";
 import { exchangeMetaCode, fetchMetaConnection, type MetaPlatform } from "@/lib/connectors/meta/oauth";
+import { exchangeTikTokCode, fetchTikTokIdentity } from "@/lib/connectors/tiktok/oauth";
 import { exchangeXCode, fetchXIdentity } from "@/lib/connectors/x/oauth";
+import { exchangeYouTubeCode, fetchYouTubeChannel } from "@/lib/connectors/youtube/oauth";
 import { hasLiveConnector } from "@/lib/connectors/registry";
 import {
   CONNECT_RETURN_COOKIE,
@@ -17,7 +19,8 @@ import { encryptToken, TokenKeyError, tokenContext } from "@/lib/connectors/toke
 import { requestOrigin } from "@/lib/http/origin";
 
 /**
- * GET /api/ops/connections/:platform/callback (002 T2.3; 006 adds Meta and X).
+ * GET /api/ops/connections/:platform/callback (002 T2.3; 006 adds Meta and X;
+ * 007 adds TikTok and YouTube).
  *
  *   1. state must match a cookie this server signed for this user and platform
  *   2. exchange the code, read the account identity
@@ -95,6 +98,42 @@ async function connect(
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
       expiresAt: tokens.expiresAt,
+      refreshExpiresAt: null,
+      scopes: tokens.scopes,
+    };
+  }
+
+  if (platform === "tiktok") {
+    const tokens = await exchangeTikTokCode({ code: input.code, redirectUri: input.redirectUri });
+    const identity = await fetchTikTokIdentity({
+      accessToken: tokens.accessToken,
+      openId: tokens.openId,
+    });
+    return {
+      ...identity,
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      expiresAt: tokens.expiresAt,
+      // TikTok says how long the refresh token lasts (180 days), so the row can
+      // show a founder when the connection itself, not just the access token,
+      // will need redoing.
+      refreshExpiresAt: tokens.refreshExpiresAt,
+      scopes: tokens.scopes,
+    };
+  }
+
+  if (platform === "youtube") {
+    const tokens = await exchangeYouTubeCode({ code: input.code, redirectUri: input.redirectUri });
+    // Strict on purpose: a Google account with no YouTube channel authorizes
+    // fine and has nowhere to publish, which is better found now than at
+    // publish time.
+    const identity = await fetchYouTubeChannel(tokens.accessToken);
+    return {
+      ...identity,
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      expiresAt: tokens.expiresAt,
+      // Google's refresh token has no stated expiry for a published app.
       refreshExpiresAt: null,
       scopes: tokens.scopes,
     };
