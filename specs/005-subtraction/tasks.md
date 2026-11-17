@@ -198,6 +198,25 @@ the defects below are triaged.
 
 None of these were introduced by the merge; the walk is simply the first time anyone looked.
 
+**Status (2026-11-18):** all four are fixed in code by `82c71b9` and deployed — production
+`/api/health` reports `6c6a6ee` (origin/main), which contains it. `[~]` = fixed and
+unit-tested, not yet re-observed on production; each becomes `[x]` only when a re-walk of
+steps 3–5 in `docs/dogfood-production.md` shows it gone (R3).
+
+- `[~]` D-1: `parsePackOutput` reads element by element — bad posts dropped, surplus
+  trimmed, platform casing forgiven; fails only below the five-post floor. Failures log a
+  reason (`truncated`, `invalid_json`, …) and the provider's `finish_reason`.
+  `tests/unit/pack-parse.test.ts`.
+- `[~]` D-2: the shell's nav links use `prefetch={false}`, so `/results` is never cached
+  before the run it should show exists (`app/(growth)/layout.tsx`).
+- `[~]` D-3: Posts leads only when `pack.analyze_run_id === run.id`; otherwise Problems
+  leads and the Posts tab says its posts came from an earlier analysis
+  (`app/(growth)/results/page.tsx`).
+- `[~]` D-4: a trailing hashtag-only body line is folded into `hashtags` before saving
+  (`lib/growth/pack.ts`). Drafts written before the fix keep the duplicate.
+
+Original reports:
+
 - [ ] **D-1 — pack generation is flaky on production.** The first "Write a new set of posts"
   returned *"The pack came back unreadable. The failed run was logged — try again."*
   (`UnparseablePackError`): the model's JSON did not parse. The identical retry, seconds
